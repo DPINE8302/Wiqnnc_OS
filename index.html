@@ -1,0 +1,447 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wiqnnc_ - Kirati Rattanaporn</title>
+  <link rel="stylesheet" href="index.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "@google/genai": "https://esm.sh/@google/genai@^0.7.0",
+        "marked": "https://esm.sh/marked@^15.0.7"
+      }
+    }
+  </script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+  <div id="boot-screen">
+    <div class="boot-logo">W</div>
+    <p>Starting Wiqnnc_...</p>
+  </div>
+
+  <div id="desktop">
+    <div id="menu-bar">
+      <div class="menu-left">
+        <div class="menu-item" id="apple-menu-button" role="button" aria-haspopup="true" aria-expanded="false" aria-label="Wiqnnc_ menu">
+          <div class="apple-logo"></div>
+          <div class="dropdown-menu" id="apple-menu" role="menu">
+            <div class="menu-item" data-action="about-wiqnnc" role="menuitem">About This Wiqnnc_</div>
+            <hr>
+            <div class="menu-item" data-action="open-settings" role="menuitem">System Settings...</div>
+            <div class="menu-item" data-action="open-preferences" role="menuitem">Preferences...</div>
+            <hr>
+            <div class="menu-item" data-action="sleep" role="menuitem">Sleep (Visual)</div>
+            <div class="menu-item" data-action="restart" role="menuitem">Restart Wiqnnc_</div>
+            <div class="menu-item" data-action="shutdown" role="menuitem">Shut Down Wiqnnc_</div>
+          </div>
+        </div>
+        <div class="app-title" id="active-app-title">Finder</div>
+        <div class="menu-item" data-menu="file-menu-button" role="button" aria-haspopup="true" aria-expanded="false">File
+          <div class="dropdown-menu" id="file-menu" role="menu">
+            <div class="menu-item" data-action="new-finder-window" role="menuitem">New Wiqnnc_ Window</div>
+            <div class="menu-item" data-action="new-folder-disabled" style="display:none;" role="menuitem">New Folder (Disabled)</div>
+            <div class="menu-item" data-action="new-note" style="display:none;" role="menuitem">New Note</div>
+            <div class="menu-item" data-action="save-note" style="display:none;" role="menuitem">Save Note</div>
+            <div class="menu-item" data-action="open-note" style="display:none;" role="menuitem">Open Note...</div>
+            <div class="menu-item" data-action="close-active-window-file" style="display:none;" role="menuitem">Close Window</div>
+          </div>
+        </div>
+        <div class="menu-item" data-menu="edit-menu-button" role="button" aria-haspopup="true" aria-expanded="false">Edit
+           <div class="dropdown-menu" id="edit-menu" role="menu">
+            <div class="menu-item disabled-menu-item" data-action="undo-disabled" role="menuitem">Undo</div>
+            <div class="menu-item disabled-menu-item" data-action="redo-disabled" role="menuitem">Redo</div>
+            <hr>
+            <div class="menu-item disabled-menu-item" data-action="cut-disabled" role="menuitem">Cut</div>
+            <div class="menu-item disabled-menu-item" data-action="copy-disabled" role="menuitem">Copy</div>
+            <div class="menu-item disabled-menu-item" data-action="paste-disabled" role="menuitem">Paste</div>
+            <div class="menu-item" data-action="select-all" role="menuitem">Select All</div>
+          </div>
+        </div>
+        <div class="menu-item" data-menu="view-menu-button" role="button" aria-haspopup="true" aria-expanded="false">View
+          <div class="dropdown-menu" id="view-menu" role="menu">
+            <div class="menu-item" data-action="toggle-theme" role="menuitem">Toggle Dark/Light Mode</div>
+            <div class="menu-item" data-action="toggle-fullscreen" role="menuitem">Enter/Exit Fullscreen</div>
+            <div class="menu-item" data-action="toggle-dock" role="menuitem">Show/Hide Dock</div>
+          </div>
+        </div>
+        <div class="menu-item" data-menu="window-menu-button" role="button" aria-haspopup="true" aria-expanded="false">Window
+          <div class="dropdown-menu" id="window-menu" role="menu">
+            <div class="menu-item" data-action="minimize-all" role="menuitem">Minimize All Windows</div>
+            <div class="menu-item" data-action="zoom-active" role="menuitem">Zoom</div>
+            <div class="menu-item" data-action="close-active-window" role="menuitem">Close Active Window</div>
+            <hr id="window-menu-separator">
+            <!-- Dynamically populated open windows -->
+          </div>
+        </div>
+        <div class="menu-item" data-menu="help-menu-button" role="button" aria-haspopup="true" aria-expanded="false">Help
+          <div class="dropdown-menu" id="help-menu" role="menu">
+            <div class="menu-item" data-action="open-help" role="menuitem">Wiqnnc_ Help</div>
+          </div>
+        </div>
+      </div>
+      <div class="menu-right">
+        <div id="spotlight-icon" role="button" aria-label="Open Spotlight Search">🔍</div>
+        <div id="date-time" role="button" aria-label="Cycle accent color on triple click">
+          <span id="current-date"></span>
+          <span id="current-time"></span>
+        </div>
+      </div>
+    </div>
+
+    <div id="windows-container">
+      <!-- Windows will be dynamically added here -->
+    </div>
+
+    <div id="dock">
+      <div id="dock-permanent-finder-container"></div>
+      <div id="dock-essential-items-container"></div>
+      <div class="dock-separator" id="dock-separator-1" style="display:none;"></div>
+      <div id="dock-dynamic-items-container"></div>
+      <div class="dock-separator" id="dock-separator-2" style="display:none;"></div>
+      <div id="dock-permanent-system-container"></div>
+    </div>
+  </div>
+
+  <div id="app-library-overlay" style="display: none;" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="app-library-title">
+    <h2 id="app-library-title" class="visually-hidden">App Library</h2>
+    <div id="app-library-grid">
+      <!-- App library items will be dynamically added here -->
+    </div>
+    <button id="close-app-library-button" aria-label="Close App Library">&times;</button>
+  </div>
+
+
+  <template id="window-template">
+    <div class="app-window">
+      <div class="title-bar">
+        <div class="window-controls">
+          <button class="window-control close" aria-label="Close window"></button>
+          <button class="window-control minimize" aria-label="Minimize window"></button>
+          <button class="window-control maximize" aria-label="Maximize or restore window"></button>
+        </div>
+        <div class="window-title-text"></div>
+      </div>
+      <div class="window-body">
+        <!-- Content will be injected here -->
+      </div>
+      <div class="resize-handle" aria-hidden="true"></div>
+    </div>
+  </template>
+
+  <template id="app-library-item-template">
+    <div class="app-library-item" role="button" tabindex="0">
+      <div class="app-library-item-icon"></div>
+      <span class="app-library-item-name"></span>
+    </div>
+  </template>
+
+  <template id="about-content">
+    <h2>About Me (Kirati Rattanaporn - Win)</h2>
+    <p>Hello, I'm Win (Kirati Rattanaporn), a passionate technology and creative enthusiast from Bangkok, Thailand. Currently in Grade 10 at SPSM (Innovative Multimedia Technology), I have a strong interest in technology, astronomy, photography, and film. My goal is to transfer to SPSM School to study multimedia and later pursue a degree at Chulalongkorn University's Faculty of Communication Arts. I believe in the motto: <strong>"No risk. No story."</strong></p>
+    <p>I'm fluent in Thai, proficient in English (C1), and currently learning Chinese & Japanese. Over the years, I have earned multiple awards in robotics, English contests, and athletics, showcasing my dedication in both academics and sports. </p>
+    <p>You can learn more about me on my <a href="https://en.wikipedia.org/wiki/Draft:Kirati_Rattanaporn" target="_blank" rel="noopener noreferrer" class="interactive-external-link">Wikipedia page</a>.</p>
+    <p>Explore my "digital desktop" to learn more, or use Win's Assistant to talk to my AI persona!</p>
+  </template>
+
+  <template id="portfolio-content">
+    <h2>My Portfolio</h2>
+    <p>Here's a glimpse into my creative and technical projects.</p>
+    <section class="portfolio-section">
+      <h3>Feature Video: Music Video Concept</h3>
+      <div id="feature-video-embed-container" class="video-embed-container">
+          <iframe src="https://www.youtube.com/embed/BMhot-xCYmk" title="Feature Video: Music Video Concept" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+      </div>
+    </section>
+     <section class="portfolio-section">
+        <h3>ChannelFlix Video Gallery</h3>
+        <p>A collection of my school projects and other creative video endeavors.</p>
+        <div id="channelflix-video-grid" class="gallery-grid channelflix-grid">
+            <!-- Video thumbnails will be dynamically loaded here -->
+        </div>
+    </section>
+    <section class="portfolio-section">
+      <h4>Photography Showcase</h4>
+        <p style="color: var(--current-text-secondary); margin-bottom: 10px;">Capturing moments that speak louder than words.</p>
+        <div class="gallery-grid">
+            <div class="gallery-item" tabindex="0" role="button" aria-label="View image: Technology and Creativity">
+                <img src="https://source.unsplash.com/random/400x300/?technology,creativity,abstract,light" alt="Technology and Creativity: Abstract light trails representing technology in photography">
+            </div>
+            <div class="gallery-item" tabindex="0" role="button" aria-label="View image: The Art of Storytelling">
+                <img src="https://source.unsplash.com/random/400x300/?storytelling,sunset,silhouette,lens" alt="The Art of Storytelling: Silhouette against a sunset, emphasizing storytelling in photography">
+            </div>
+            <div class="gallery-item" tabindex="0" role="button" aria-label="View image: Abstract Colors Texture">
+                <img src="https://source.unsplash.com/random/400x300/?abstract,colors,texture,paint" alt="Abstract Colors Texture">
+            </div>
+            <div class="gallery-item" tabindex="0" role="button" aria-label="View image: Nature Landscape Mountain">
+                <img src="https://source.unsplash.com/random/400x300/?nature,landscape,mountain,forest" alt="Nature Landscape Mountain">
+            </div>
+        </div>
+    </section>
+    <section class="portfolio-section">
+      <h3>Robotics</h3>
+      <p>Details about my award-winning robotics projects coming soon! I've achieved multiple gold medals in regional and national competitions.</p>
+      <div class="robotics-placeholder" role="region" aria-label="Robotics Demo Area">🤖 Robotics Demo Area Placeholder</div>
+    </section>
+  </template>
+
+  <template id="wins-assistant-content">
+    <div id="wins-assistant-ui-wrapper">
+        <div id="wins-assistant-orb-container">
+            <div id="wins-assistant-orb" class="listening" aria-label="Win's Assistant Status Orb"></div>
+        </div>
+        <div id="wins-assistant-output" aria-live="polite" role="log">
+             <div class="assistant-response-display message info-message">Hello! I'm Win. Ask me anything! 😊</div>
+        </div>
+        <div id="wins-assistant-loading" style="display: none;" aria-label="Win's Assistant is processing">Thinking...</div>
+        <div id="wins-assistant-input-area">
+            <input type="text" id="wins-assistant-input" placeholder="Ask Win..." aria-label="Message to Win's Assistant">
+            <button id="wins-assistant-send-button" aria-label="Send message to Win's Assistant">Ask</button>
+            <button id="wins-assistant-clear-button" aria-label="Clear conversation with Win's Assistant">Clear</button>
+        </div>
+    </div>
+  </template>
+
+  <template id="achievements-content">
+    <h2>Achievements & Awards</h2>
+    <ul style="list-style-type: none; padding-left: 0;">
+        <li><strong>2024:</strong> 🥇 National Robotics Gold</li>
+        <li><strong>2024:</strong> 🥇 National Robotics Gold (Repeat)</li>
+        <li><strong>2024:</strong> 🏅 Multi-Skills Gold (EP Open House)</li>
+        <li><strong>2024:</strong> 🥈 Regional English Contest: Silver</li>
+        <li><strong>2024:</strong> 🥈 Silver Medal: 200m Sprint (0.69s from gold)</li>
+        <li><strong>2024:</strong> 🏅 Top 4 Finish: Running</li>
+        <li><strong>2023:</strong> 🥇 Gold: Mathematics Project (Southern EP Open House)</li>
+        <li><strong>2023:</strong> 🥇 Robotics Gold (4th Regional/Overall)</li>
+        <li><strong>2023:</strong> 🥇 Robotics Gold (3rd Regional/Overall)</li>
+        <li><strong>2023:</strong> 🥈 Silver Medal: School Athletics (Running)</li>
+        <li><strong>2023:</strong> 🏅 English Contest Recognition</li>
+        <li><strong>2022:</strong> 🥇 Robotics Gold (2nd Regional/Overall)</li>
+        <li><strong>2022:</strong> 🥇 First Robotics Gold (Regional/Overall)</li>
+        <li><strong>2022:</strong> 🥇 Gold Medal: School Sprint (Running)</li>
+    </ul>
+    <p style="margin-top: 15px;">I'm always pushing myself to learn and achieve more in Wiqnnc_ and beyond!</p>
+  </template>
+
+  <template id="contact-content">
+    <h2>Get in Touch</h2>
+    <p>Connect with me online:</p>
+    <ul>
+      <li>Instagram: <a href="https://www.instagram.com/Win.rn" target="_blank" rel="noopener noreferrer" class="interactive-external-link">@Win.rn</a> (Main)</li>
+      <li>Instagram: <a href="https://www.instagram.com/Win.albums" target="_blank" rel="noopener noreferrer" class="interactive-external-link">@Win.albums</a> (Photography)</li>
+      <li>YouTube: <a href="https://www.youtube.com/channel/UCMQefq5ku1GHvTm50Ysixyg" target="_blank" rel="noopener noreferrer" class="interactive-external-link">life.8302</a></li>
+      <li>Wikipedia: <a href="https://en.wikipedia.org/wiki/Draft:Kirati_Rattanaporn" target="_blank" rel="noopener noreferrer" class="interactive-external-link">Win’s Biography</a></li>
+    </ul>
+  </template>
+  
+  <template id="settings-content">
+    <h2>System Settings</h2>
+    <div class="setting-item">
+      <label for="theme-toggle-button">Appearance:</label>
+      <button id="theme-toggle-button">Toggle Dark/Light Mode</button>
+    </div>
+    <div class="setting-item">
+      <label>Desktop Background:</label>
+      <div class="wallpaper-options">
+        <button class="wallpaper-option" data-wallpaper="default" aria-label="Set default space wallpaper">Default Space</button>
+        <button class="wallpaper-option" data-wallpaper="nebula" aria-label="Set nebula wallpaper">Nebula</button>
+        <button class="wallpaper-option" data-wallpaper="earth" aria-label="Set earth view wallpaper">Earth View</button>
+        <button class="wallpaper-option" data-wallpaper="random" aria-label="Set random abstract art wallpaper">Random Art</button>
+        <button class="wallpaper-option" data-wallpaper="cosmic_drift" aria-label="Set Cosmic Drift wallpaper" style="display:none;">Cosmic Drift (Secret)</button>
+      </div>
+    </div>
+     <div class="setting-item">
+      <label>System Information:</label>
+      <p id="os-version-info" data-version-popup="Crafted with passion by Win! ✨" role="button" tabindex="0" aria-label="Wiqnnc_ Version, click for a message">Wiqnnc_ Version: 0.5 "Photon"</p>
+      <button id="check-updates-button" class="mock-link" data-message="Checking for updates... Wiqnnc_ 0.5 'Photon' is up to date!">Check for Updates...</button>
+    </div>
+  </template>
+  
+  <template id="help-content">
+    <h2>Wiqnnc_ Help</h2>
+    <p>Welcome to Wiqnnc_! This is Kirati "Win" Rattanaporn's interactive portfolio experience.</p>
+    <ul>
+      <li><strong>App Library (🚀):</strong> Click the rocket icon in the Dock to open the App Library and launch apps like Notepad, Calculator, Terminal, and more.</li>
+      <li><strong>Dock:</strong> Shows essential apps (Finder, Portfolio, Win's Assistant, Settings, Terminal, App Library, Trash) and icons for other currently running applications.</li>
+      <li><strong>Windows:</strong> Drag by title bars, resize with the handle, and use controls (close, minimize, maximize). Try snapping windows to screen edges!</li>
+      <li><strong>Menu Bar:</strong> Explore File, Edit, View, Window, and Help menus for more actions. The Wiqnnc_ () menu has system options.</li>
+      <li><strong>Spotlight:</strong> Click the 🔍 or press (Cmd/Ctrl+Space visual mock) and type an app name to launch it. Try typing `matrix`!</li>
+      <li><strong>Win's Assistant (🎤):</strong> Talk to me (Win!) directly through my AI persona! Try asking "what is the meaning of life?".</li>
+      <li><strong>Terminal Commands:</strong> Try `help`, `neofetch`, `kirati`, `theme dark`, `wallpaper random`, `adventure`, `glitch_os`, `show_credits`, `ascii cat`.</li>
+      <li><strong>W-Browse (🌐):</strong> Explore the web! Note: some sites may not load due to embedding restrictions.</li>
+      <li><strong>Easter Eggs:</strong> Try the Konami code on the desktop (↑↑↓↓←→←→BA) or triple-click the Date/Time in the menu bar! Click the OS version in "About This Wiqnnc_".</li>
+    </ul>
+  </template>
+  
+  <template id="about-this-wiqnnc-content">
+    <h2>About This Wiqnnc_</h2>
+    <p id="about-os-version" data-version-popup="Wiqnnc_ - A Digital Dream by Win! 🚀" role="button" tabindex="0" aria-label="Wiqnnc_ Version, click for a message"><strong>Wiqnnc_ Version:</strong> 0.5 "Photon"</p>
+    <p><strong>Developer:</strong> Kirati Rattanaporn (Win)</p>
+    <p><strong>Core Technology:</strong> Gemini API Enhanced Brain</p>
+    <p><strong>Design Philosophy:</strong> "No risk. No story." - Applied to digital experiences.</p>
+    <p><strong>Built with:</strong> TypeScript, HTML, CSS, and a lot of 🚀✨</p>
+    <p>&copy; 2024 Kirati Rattanaporn. This portfolio is a masterpiece in progress.</p>
+  </template>
+
+  <template id="notepad-content">
+    <div class="notepad-controls">
+        <button id="notepad-new" aria-label="New note">New</button>
+        <button id="notepad-save" aria-label="Save current note">Save</button>
+        <button id="notepad-load" aria-label="Load saved note">Load</button>
+    </div>
+    <textarea id="notepad-textarea" aria-label="Notepad text area" placeholder="Start typing your brilliant ideas..."></textarea>
+  </template>
+
+  <template id="calculator-content">
+    <div class="calculator-display" id="calc-display" aria-live="polite" role="status">0</div>
+    <div class="calculator-buttons">
+      <button data-key="C" class="calc-op" aria-label="Clear">C</button>
+      <button data-key="(" class="calc-op" aria-label="Open parenthesis">(</button>
+      <button data-key=")" class="calc-op" aria-label="Close parenthesis">)</button>
+      <button data-key="/" class="calc-op" aria-label="Divide">/</button>
+      <button data-key="7" aria-label="7">7</button>
+      <button data-key="8" aria-label="8">8</button>
+      <button data-key="9" aria-label="9">9</button>
+      <button data-key="*" class="calc-op" aria-label="Multiply">*</button>
+      <button data-key="4" aria-label="4">4</button>
+      <button data-key="5" aria-label="5">5</button>
+      <button data-key="6" aria-label="6">6</button>
+      <button data-key="-" class="calc-op" aria-label="Subtract">-</button>
+      <button data-key="1" aria-label="1">1</button>
+      <button data-key="2" aria-label="2">2</button>
+      <button data-key="3" aria-label="3">3</button>
+      <button data-key="+" class="calc-op" aria-label="Add">+</button>
+      <button data-key="0" class="calc-zero" aria-label="0">0</button>
+      <button data-key="." aria-label="Decimal point">.</button>
+      <button data-key="=" class="calc-eq" aria-label="Equals">=</button>
+    </div>
+  </template>
+
+  <template id="terminal-content">
+    <div id="terminal-output" aria-live="polite" role="log">
+      <div>Welcome to Wiqnnc_ Terminal! Type 'help' for commands.</div>
+    </div>
+    <div id="terminal-input-line">
+      <span class="terminal-prompt" aria-hidden="true">Wiqnnc_:/Desktop $</span>
+      <input type="text" id="terminal-input" aria-label="Terminal command input" spellcheck="false" autocomplete="off">
+    </div>
+  </template>
+
+  <template id="musicplayer-content">
+    <div class="music-player-body">
+      <div class="album-art-mock" aria-label="Album art">🎧</div>
+      <div id="track-info" aria-live="polite">
+        <div id="track-title">Wiqnnc_ Anthem</div>
+        <div id="track-artist">DJ Win</div>
+      </div>
+      <div class="progress-bar-mock" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Track progress">
+        <div id="progress-fill-mock"></div>
+      </div>
+      <div class="music-controls">
+        <button id="prev-track" aria-label="Previous track">⏪</button>
+        <button id="play-pause-track" aria-label="Play track">▶️</button>
+        <button id="next-track" aria-label="Next track">⏩</button>
+      </div>
+      <div class="volume-control-mock">
+        <span aria-hidden="true">🔉</span> <input type="range" min="0" max="100" value="75" aria-label="Volume control"> <span aria-hidden="true">🔊</span>
+      </div>
+    </div>
+  </template>
+
+  <template id="systemmonitor-content">
+    <div class="system-monitor-graphs">
+      <div class="graph-container">
+        <label for="cpu-usage-fill">CPU Usage:</label>
+        <div class="progress-bar-monitor" role="meter" aria-valuemin="0" aria-valuemax="100" aria-labelledby="cpu-usage-text">
+          <div id="cpu-usage-fill" class="progress-fill-monitor"></div>
+        </div>
+        <span id="cpu-usage-text">0%</span>
+      </div>
+      <div class="graph-container">
+        <label for="memory-usage-fill">Memory Usage:</label>
+        <div class="progress-bar-monitor" role="meter" aria-valuemin="0" aria-valuemax="100" aria-labelledby="memory-usage-text">
+          <div id="memory-usage-fill" class="progress-fill-monitor"></div>
+        </div>
+        <span id="memory-usage-text">0%</span>
+      </div>
+    </div>
+    <div class="process-list-container">
+      <label for="process-list">Running Processes:</label>
+      <ul id="process-list" role="list">
+        <!-- Processes will be listed here -->
+      </ul>
+    </div>
+  </template>
+
+  <template id="matrix-rain-content">
+    <canvas id="matrix-canvas"></canvas>
+  </template>
+
+  <template id="credits-content">
+    <div class="credits-scroll-container">
+        <h2>Wiqnnc_ Credits</h2>
+        <p><strong>Lead Developer & Visionary:</strong> Kirati "Win" Rattanaporn</p>
+        <p><strong>AI Core & Conversation Engine:</strong> Google Gemini API</p>
+        <p><strong>Inspiration & Design Language:</strong> Apple, F1, SpaceX, NASA, The Future</p>
+        <p><strong>Primary Technologies:</strong> TypeScript, HTML5, CSS3</p>
+        <p><strong>Special Thanks To:</strong> The Open Web, Stack Overflow, Unsplash (for random wallpapers)</p>
+        <p><strong>Motto:</strong> "No risk. No story."</p>
+        <p>---</p>
+        <p>This project is a demonstration of passion, creativity, and the endless possibilities of technology.</p>
+        <p>Thank you for exploring Wiqnnc_!</p>
+        <p>🚀 ✨ 💡</p>
+        <p>---</p>
+        <p>Want to build something amazing? Let's connect!</p>
+        <p>---</p>
+        <p>(C) 2024 Kirati Rattanaporn. All rights reserved (for this unique creation!).</p>
+    </div>
+  </template>
+
+  <template id="w-browse-content">
+    <div class="w-browse-controls">
+      <button class="w-browse-back" aria-label="Back">◀️</button>
+      <button class="w-browse-forward" aria-label="Forward">▶️</button>
+      <button class="w-browse-refresh" aria-label="Refresh">🔄</button>
+      <button class="w-browse-home" aria-label="Home">🏠</button>
+      <input type="text" class="w-browse-url-input" placeholder="Enter URL (e.g., example.com)" aria-label="URL Input">
+      <button class="w-browse-go-button" aria-label="Go to URL">Go</button>
+    </div>
+    <div class="w-browse-message-area" style="display:none;" aria-live="polite"></div>
+    <iframe class="w-browse-iframe" sandbox="allow-forms allow-modals allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-top-navigation-by-user-activation" allow="encrypted-media; geolocation; microphone; camera; midi; vr; fullscreen"></iframe>
+  </template>
+
+
+  <div id="context-menu" role="menu">
+    <div class="context-menu-item" data-action="new-finder-window-ctx" role="menuitem">New Wiqnnc_ Window</div>
+    <div class="context-menu-item" data-action="change-wallpaper" role="menuitem">Change Desktop Background...</div>
+    <div class="context-menu-item" data-action="toggle-app-library" role="menuitem">Show App Library</div>
+    <div class="context-menu-item disabled-menu-item" data-action="new-folder-disabled" role="menuitem">New Folder</div>
+    <hr>
+    <div class="context-menu-item" data-action="about-wiqnnc-ctx" role="menuitem">About This Wiqnnc_</div>
+  </div>
+  
+  <div id="spotlight-search-ui" style="display: none;" role="search">
+    <input type="text" id="spotlight-input" placeholder="Wiqnnc_ Spotlight Search" aria-label="Spotlight search input" autocomplete="off" />
+    <ul id="spotlight-results" role="listbox"></ul>
+  </div>
+
+  <div id="image-modal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="image-modal-main-title-text">
+    <span class="modal-close-button" role="button" tabindex="0" aria-label="Close media viewer">&times;</span>
+    <h3 id="image-modal-main-title-text" class="visually-hidden">Media Viewer</h3>
+    <div id="media-modal-iframe-container" class="media-modal-content-container" style="display:none;">
+        <!-- This will hold the iframe for videos -->
+    </div>
+    <img src="" alt="Enlarged portfolio image" id="modal-image-content" style="display:none;">
+  </div>
+
+  <div id="konami-code-effect" style="display:none;" aria-hidden="true">✨🚀🌟</div>
+  <div id="glitch-overlay" style="display:none;" aria-hidden="true"></div>
+  <div id="version-tooltip" class="tooltip" style="display:none; position:fixed; z-index: 1000000;"></div>
+
+
+  <script type="module" src="index.tsx"></script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
