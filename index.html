@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -49,7 +50,7 @@
         <div class="menu-item" data-menu="file-menu-button" role="button" aria-haspopup="true" aria-expanded="false">File
           <div class="dropdown-menu" id="file-menu" role="menu">
             <div class="menu-item" data-action="new-finder-window" role="menuitem">New Wiqnnc_ Window</div>
-            <div class="menu-item" data-action="new-folder-disabled" style="display:none;" role="menuitem">New Folder (Disabled)</div>
+            <div class="menu-item" data-action="new-folder" role="menuitem">New Folder</div>
             <div class="menu-item" data-action="new-note" style="display:none;" role="menuitem">New Note</div>
             <div class="menu-item" data-action="save-note" style="display:none;" role="menuitem">Save Note</div>
             <div class="menu-item" data-action="open-note" style="display:none;" role="menuitem">Open Note...</div>
@@ -284,9 +285,9 @@
       <li><strong>Menu Bar:</strong> Explore File, Edit, View, Window, and Help menus for more actions. The Wiqnnc_ () menu has system options.</li>
       <li><strong>Spotlight:</strong> Click the 🔍 or press (Cmd/Ctrl+Space visual mock) and type an app name to launch it. Try typing `matrix`!</li>
       <li><strong>Win's Assistant (🎤):</strong> Talk to me (Win!) directly through my AI persona! Try asking "what is the meaning of life?".</li>
-      <li><strong>Terminal Commands:</strong> Try `help`, `neofetch`, `kirati`, `theme dark`, `wallpaper random`, `adventure`, `glitch_os`, `show_credits`, `ascii cat`.</li>
+      <li><strong>Terminal Commands:</strong> Try `help`, `neofetch`, `kirati`, `theme dark`, `wallpaper random`, `adventure`, `glitch_os`, `show_credits`, `ascii cat`, `play_tunes`.</li>
       <li><strong>W-Browse (🌐):</strong> Explore the web! Note: some sites may not load due to embedding restrictions.</li>
-      <li><strong>Desktop Icons (📁, 💾):</strong> Drag them around! Double-click to open associated apps/info.</li>
+      <li><strong>Desktop Icons (📁, 💾):</strong> Drag them around! Double-click to open associated apps/info. Newly created folders (via "File > New Folder" or context menu) can be opened to a basic view and dragged to the Trash 🗑️ to delete.</li>
       <li><strong>Sticky Notes (📌):</strong> Jot down quick notes. They save automatically!</li>
       <li><strong>Easter Eggs:</strong> Try the Konami code on the desktop (↑↑↓↓←→←→BA) or triple-click the Date/Time in the menu bar! Click the OS version in "About This Wiqnnc_".</li>
     </ul>
@@ -348,21 +349,27 @@
 
   <template id="musicplayer-content">
     <div class="music-player-body">
-      <div class="album-art-mock" aria-label="Album art">🎧</div>
+      <audio id="tunes-audio-player" src="apocalypse.mp3" preload="metadata"></audio>
+      <div class="album-art-mock" aria-label="Album art for current track">🎶</div>
       <div id="track-info" aria-live="polite">
-        <div id="track-title">Wiqnnc_ Anthem</div>
-        <div id="track-artist">DJ Win</div>
+        <div id="track-title">Apocalypse</div>
+        <div id="track-artist">Cigarettes After Sex</div>
       </div>
-      <div class="progress-bar-mock" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Track progress">
-        <div id="progress-fill-mock"></div>
+      <div class="tunes-time-display">
+        <span id="tunes-current-time" aria-label="Current playback time">0:00</span> / <span id="tunes-total-time" aria-label="Total track time">0:00</span>
+      </div>
+      <div class="progress-bar-mock" role="slider" aria-label="Track progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
+        <div id="progress-fill-mock" style="width: 0%;"></div>
       </div>
       <div class="music-controls">
-        <button id="prev-track" aria-label="Previous track">⏪</button>
+        <button id="prev-track" aria-label="Previous track (Restart)">⏮️</button>
         <button id="play-pause-track" aria-label="Play track">▶️</button>
-        <button id="next-track" aria-label="Next track">⏩</button>
+        <button id="next-track" aria-label="Next track (Restart)">⏭️</button>
       </div>
       <div class="volume-control-mock">
-        <span aria-hidden="true">🔉</span> <input type="range" min="0" max="100" value="75" aria-label="Volume control"> <span aria-hidden="true">🔊</span>
+        <span aria-hidden="true">🔉</span>
+        <input type="range" min="0" max="100" value="75" aria-label="Volume control">
+        <span aria-hidden="true">🔊</span>
       </div>
     </div>
   </template>
@@ -370,24 +377,24 @@
   <template id="systemmonitor-content">
     <div class="system-monitor-graphs">
       <div class="graph-container">
-        <label for="cpu-usage-fill">CPU Usage:</label>
-        <div class="progress-bar-monitor" role="meter" aria-valuemin="0" aria-valuemax="100" aria-labelledby="cpu-usage-text">
+        <label for="cpu-progress">CPU Usage:</label>
+        <div class="progress-bar-monitor" role="progressbar" aria-labelledby="cpu-label" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="cpu-progress">
           <div id="cpu-usage-fill" class="progress-fill-monitor"></div>
         </div>
-        <span id="cpu-usage-text">0%</span>
+        <div id="cpu-usage-text" aria-hidden="true">0%</div>
       </div>
       <div class="graph-container">
-        <label for="memory-usage-fill">Memory Usage:</label>
-        <div class="progress-bar-monitor" role="meter" aria-valuemin="0" aria-valuemax="100" aria-labelledby="memory-usage-text">
+        <label for="mem-progress">Memory Usage:</label>
+        <div class="progress-bar-monitor" role="progressbar" aria-labelledby="mem-label" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="mem-progress">
           <div id="memory-usage-fill" class="progress-fill-monitor"></div>
         </div>
-        <span id="memory-usage-text">0%</span>
+        <div id="memory-usage-text" aria-hidden="true">0%</div>
       </div>
     </div>
     <div class="process-list-container">
       <label for="process-list">Running Processes:</label>
       <ul id="process-list" role="list">
-        <!-- Processes will be listed here -->
+        <!-- Processes will be listed here by JS -->
       </ul>
     </div>
   </template>
@@ -398,70 +405,60 @@
 
   <template id="credits-content">
     <div class="credits-scroll-container">
-        <h2>Wiqnnc_ Credits</h2>
-        <p><strong>Lead Developer & Visionary:</strong> Kirati "Win" Rattanaporn</p>
-        <p><strong>AI Core & Conversation Engine:</strong> Google Gemini API</p>
-        <p><strong>Inspiration & Design Language:</strong> Apple, F1, SpaceX, NASA, The Future</p>
-        <p><strong>Primary Technologies:</strong> JavaScript, HTML5, CSS3</p>
-        <p><strong>Special Thanks To:</strong> The Open Web, Stack Overflow, Unsplash (for random wallpapers)</p>
-        <p><strong>Motto:</strong> "No risk. No story."</p>
-        <p>---</p>
-        <p>This project is a demonstration of passion, creativity, and the endless possibilities of technology.</p>
-        <p>Thank you for exploring Wiqnnc_!</p>
-        <p>🚀 ✨ 💡</p>
-        <p>---</p>
-        <p>Want to build something amazing? Let's connect!</p>
-        <p>---</p>
-        <p>(C) 2024 Kirati Rattanaporn. All rights reserved (for this unique creation!).</p>
+      <h2>Wiqnnc_ Credits</h2>
+      <p><strong>Lead Developer & Visionary:</strong> Kirati "Win" Rattanaporn</p>
+      <p><strong>AI Core:</strong> Gemini API</p>
+      <p><strong>Inspiration:</strong> macOS, The Future</p>
+      <p><strong>Motto:</strong> "No risk. No story."</p>
+      <br>
+      <p>--- Special Thanks ---</p>
+      <p>To everyone who believes in the power of creativity and technology.</p>
+      <p>And to you, for exploring Wiqnnc_!</p>
+      <br>
+      <p><em>All random images from Unsplash.</em></p>
+      <p><em>Wiqnnc_ &copy; 2024 Kirati Rattanaporn</em></p>
     </div>
   </template>
 
   <template id="w-browse-content">
     <div class="w-browse-controls">
-      <button class="w-browse-back" aria-label="Back">◀️</button>
-      <button class="w-browse-forward" aria-label="Forward">▶️</button>
-      <button class="w-browse-refresh" aria-label="Refresh">🔄</button>
-      <button class="w-browse-home" aria-label="Home">🏠</button>
-      <input type="text" class="w-browse-url-input" placeholder="Enter URL (e.g., example.com)" aria-label="URL Input">
-      <button class="w-browse-go-button" aria-label="Go to URL">Go</button>
+        <button class="w-browse-back" aria-label="Back" disabled>⬅️</button>
+        <button class="w-browse-forward" aria-label="Forward" disabled>➡️</button>
+        <button class="w-browse-refresh" aria-label="Refresh">🔄</button>
+        <button class="w-browse-home" aria-label="Home">🏠</button>
+        <input type="text" class="w-browse-url-input" placeholder="Enter URL (e.g., example.com)" aria-label="Address bar">
+        <button class="w-browse-go-button">Go</button>
     </div>
-    <div class="w-browse-message-area" style="display:none;" aria-live="polite"></div>
-    <iframe class="w-browse-iframe" sandbox="allow-forms allow-modals allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-top-navigation-by-user-activation" allow="encrypted-media; geolocation; microphone; camera; midi; vr; fullscreen"></iframe>
+    <div class="w-browse-message-area" style="display: none;" aria-live="polite"></div>
+    <iframe class="w-browse-iframe" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" title="Web Browser Content"></iframe>
   </template>
 
-  <template id="sticky-notes-content">
-    <textarea class="sticky-note-textarea" placeholder="Type your note here..." aria-label="Sticky note text area"></textarea>
+  <template id="sticky-notes-app-content-template">
+    <textarea class="sticky-note-textarea" aria-label="Sticky note content" placeholder="Type your note..."></textarea>
   </template>
 
-
-  <div id="context-menu" role="menu">
-    <div class="context-menu-item" data-action="new-finder-window-ctx" role="menuitem">New Wiqnnc_ Window</div>
-    <div class="context-menu-item" data-action="new-sticky-note-ctx" role="menuitem">New Sticky Note</div>
-    <div class="context-menu-item" data-action="change-wallpaper" role="menuitem">Change Desktop Background...</div>
-    <div class="context-menu-item" data-action="toggle-app-library" role="menuitem">Show App Library</div>
-    <div class="context-menu-item disabled-menu-item" data-action="new-folder-disabled" role="menuitem">New Folder</div>
-    <hr>
-    <div class="context-menu-item" data-action="about-wiqnnc-ctx" role="menuitem">About This Wiqnnc_</div>
-  </div>
-  
+  <!-- Global UI Elements -->
   <div id="spotlight-search-ui" style="display: none;" role="search">
-    <input type="text" id="spotlight-input" placeholder="Wiqnnc_ Spotlight Search" aria-label="Spotlight search input" autocomplete="off" />
+    <input type="text" id="spotlight-input" placeholder="Spotlight Search" aria-label="Spotlight Search">
     <ul id="spotlight-results" role="listbox"></ul>
   </div>
 
-  <div id="image-modal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="image-modal-main-title-text">
-    <span class="modal-close-button" role="button" tabindex="0" aria-label="Close media viewer">&times;</span>
-    <h3 id="image-modal-main-title-text" class="visually-hidden">Media Viewer</h3>
-    <div id="media-modal-iframe-container" class="media-modal-content-container" style="display:none;">
-        <!-- This will hold the iframe for videos -->
+  <div id="image-modal" class="modal-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="image-modal-main-title-text">
+    <button class="modal-close-button" aria-label="Close media viewer">&times;</button>
+    <h3 id="image-modal-main-title-text">Media Viewer</h3>
+    <div id="media-modal-iframe-container" style="display: none;">
+        <!-- Iframe will be injected here by JS -->
     </div>
-    <img src="" alt="Enlarged portfolio image" id="modal-image-content" style="display:none;">
+    <img id="modal-image-content" src="" alt="Enlarged media" style="display: none;">
   </div>
+  
+  <div id="konami-code-effect" style="display: none;" aria-live="polite"></div>
+  <div id="glitch-overlay" style="display: none;" aria-hidden="true"></div>
+  <div id="version-tooltip" role="tooltip" style="display: none;"></div>
 
-  <div id="konami-code-effect" style="display:none;" aria-hidden="true">✨🚀🌟</div>
-  <div id="glitch-overlay" style="display:none;" aria-hidden="true"></div>
-  <div id="version-tooltip" class="tooltip" style="display:none; position:fixed; z-index: 1000000;"></div>
-
+  <div id="context-menu" style="display: none;" role="menu">
+    <!-- Context menu items will be dynamically added here by JavaScript -->
+  </div>
 
   <script type="module" src="index.js"></script>
 <script type="module" src="/index.tsx"></script>
