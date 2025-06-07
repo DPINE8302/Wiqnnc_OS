@@ -161,48 +161,7 @@ body.grabbing, body.grabbing * {
   cursor: grabbing !important;
 }
 
-
-#boot-screen {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: #000;
-  color: #fff;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  z-index: 999999;
-  opacity: 1;
-  transition: opacity 0.5s ease-out 1s; 
-}
-#boot-screen.visible {
-  opacity: 1 !important;
-  transition: opacity 0.1s ease-in !important; 
-  pointer-events: auto !important;
-}
-
-#boot-screen.hidden {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.boot-logo {
-  font-size: 5rem;
-  font-weight: bold;
-  font-family: "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif; 
-  margin-bottom: 20px;
-  animation: pulse 1.5s infinite ease-in-out;
-  color: #eee;
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); text-shadow: 0 0 5px #fff; }
-  50% { transform: scale(1.1); text-shadow: 0 0 15px #fff, 0 0 25px var(--current-accent); }
-}
-
+/* Boot screen CSS removed */
 
 #desktop {
   width: 100vw;
