@@ -32,7 +32,9 @@ const state = {
   versionTooltipTimeout: null,
   isAppLibraryOpen: false,
   loggedIn: false,
-  desktopIcons: new Map(),
+  desktopIcons: new Map(), // Stores rendered icon elements
+  dynamicDesktopItems: [], // Stores user-created folder definitions (id, label, icon, actionType, defaultX/Y, currentX/Y, isUserCreated)
+  draggedIconInfo: null, // { element, itemDef, originalX, originalY }
 };
 
 // --- DOM Elements ---
@@ -77,9 +79,9 @@ const APP_DEFINITIONS = [
   { id: 'Settings', title: 'System Settings', icon: '⚙️', contentTemplateId: 'settings-content', isLaunchable: true, defaultWidth: '500px', defaultHeight: '480px', category: 'System', appSpecificSetup: setupSettingsAppListeners, isEssentialDock: true },
   { id: 'Terminal', title: 'Terminal', icon: '📟', contentTemplateId: 'terminal-content', isLaunchable: true, category: 'Utilities', appSpecificSetup: setupTerminalApp, isEssentialDock: true },
   { id: 'Notepad', title: 'Notepad', icon: '📝', contentTemplateId: 'notepad-content', isLaunchable: true, category: 'Productivity', appSpecificSetup: setupNotepadApp, allowMultipleInstances: true },
-  { id: 'StickyNotes', title: 'Sticky Notes', icon: '📌', contentTemplateId: 'sticky-notes-content', isLaunchable: true, category: 'Productivity', appSpecificSetup: setupStickyNotesApp, allowMultipleInstances: true, defaultWidth: '250px', defaultHeight: '250px' },
+  { id: 'StickyNotes', title: 'Sticky Notes', icon: '📌', contentTemplateId: 'sticky-notes-app-content-template', isLaunchable: true, category: 'Productivity', appSpecificSetup: setupStickyNotesApp, allowMultipleInstances: true, defaultWidth: '250px', defaultHeight: '250px' },
   { id: 'Calculator', title: 'Calculator', icon: '🧮', contentTemplateId: 'calculator-content', isLaunchable: true, defaultWidth: '320px', defaultHeight: '420px', category: 'Utilities', appSpecificSetup: setupCalculatorApp },
-  { id: 'MusicPlayer', title: 'MiniTunes', icon: '🎶', contentTemplateId: 'musicplayer-content', isLaunchable: true, defaultWidth: '300px', defaultHeight: '320px', category: 'Creative', appSpecificSetup: setupMusicPlayerApp },
+  { id: 'MusicPlayer', title: 'Tunes', icon: '🎶', contentTemplateId: 'musicplayer-content', isLaunchable: true, defaultWidth: '350px', defaultHeight: '380px', category: 'Creative', appSpecificSetup: setupMusicPlayerApp },
   { id: 'SystemMonitor', title: 'System Monitor', icon: '📊', contentTemplateId: 'systemmonitor-content', isLaunchable: true, defaultHeight: '380px', category: 'Utilities', appSpecificSetup: setupSystemMonitorApp },
   { id: 'WBrowse', title: 'W-Browse', icon: '🌐', contentTemplateId: 'w-browse-content', isLaunchable: true, defaultWidth: '800px', defaultHeight: '600px', category: 'Utilities', appSpecificSetup: setupWBrowseApp, allowMultipleInstances: true },
   { id: 'Achievements', title: 'Achievements', icon: '🏆', contentTemplateId: 'achievements-content', isLaunchable: true, category: 'Portfolio', defaultWidth: '550px' },
@@ -89,11 +91,12 @@ const APP_DEFINITIONS = [
   { id: 'MatrixRain', title: 'Matrix Rain', icon: '🌌', contentTemplateId: 'matrix-rain-content', isLaunchable: true, defaultWidth: '700px', defaultHeight: '500px', category: 'Secret', appSpecificSetup: setupMatrixRainApp, allowMultipleInstances: true },
   { id: 'Credits', title: 'Wiqnnc_ Credits', icon: '📜', contentTemplateId: 'credits-content', isLaunchable: true, defaultWidth: '400px', defaultHeight: '450px', category: 'Secret', appSpecificSetup: setupCreditsApp, allowMultipleInstances: true },
   { id: 'Trash', title: 'Trash', icon: '🗑️', isPermanentDock: true, isLaunchable: false },
+  // Note: FolderView is not in APP_DEFINITIONS as it's not directly launchable by users from App Library/Spotlight
 ];
 
-const DESKTOP_ITEM_DEFINITIONS = [
-    { id: 'MyProjectsFolder', label: 'My Projects', icon: '📁', actionType: 'openApp', actionValue: 'Portfolio', defaultX: 20, defaultY: 20 },
-    { id: 'WiqnncDrive', label: 'Wiqnnc_ Drive', icon: '💾', actionType: 'openApp', actionValue: 'AboutWiqnnc', defaultX: 20, defaultY: 120 },
+const STATIC_DESKTOP_ITEM_DEFINITIONS = [
+    { id: 'MyProjectsFolder', label: 'My Projects', icon: '📁', actionType: 'openApp', actionValue: 'Portfolio', defaultX: 20, defaultY: 20, isUserCreated: false },
+    { id: 'WiqnncDrive', label: 'Wiqnnc_ Drive', icon: '💾', actionType: 'openApp', actionValue: 'AboutWiqnnc', defaultX: 20, defaultY: 120, isUserCreated: false },
 ];
 
 
@@ -114,6 +117,7 @@ function init() {
   
   document.documentElement.style.setProperty('--current-accent', state.accentColors[state.currentAccentIndex]);
   applyTheme(); // Apply theme early for login screen too
+  loadDynamicDesktopItems();
 }
 
 function handleLogin() {
@@ -130,7 +134,7 @@ function showDesktop() {
     window.setTimeout(() => desktop.classList.remove('hidden'), 10); // Slight delay for transition
 
     updateDateTime();
-    window.setInterval(updateDateTime, 1000 * 30); 
+    window.setInterval(updateDateTime, 1000); // Update clock every second
 
     renderDock(); 
     renderDesktopIcons();
@@ -166,7 +170,7 @@ function applyTheme() {
   document.body.classList.toggle('dark-theme', state.isDarkMode);
   localStorage.setItem('wiqnnc-theme', state.isDarkMode ? 'dark' : 'light');
     state.windows.forEach(win => {
-        if (win.baseAppId === 'Terminal' && win.element.querySelector('.neofetch-output')) {
+        if (win.baseAppId === 'Terminal' && win.element?.querySelector('.neofetch-output')) {
             const termThemeInfo = win.element.querySelector('#term-theme-info');
             if (termThemeInfo) termThemeInfo.textContent = state.isDarkMode ? 'Dark' : 'Light';
         }
@@ -184,7 +188,7 @@ if (savedTheme) state.isDarkMode = savedTheme === 'dark';
 // --- Date & Time & Accent Cycler ---
 function updateDateTime() {
   const now = new Date();
-  currentClock.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  currentClock.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   currentDateEl.textContent = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
 }
 function setupDateTimeAccentCycler() {
@@ -202,7 +206,7 @@ function setupDateTimeAccentCycler() {
             document.documentElement.style.setProperty('--current-accent', state.accentColors[state.currentAccentIndex]);
             state.dateTimeClickCount = 0; 
             state.windows.forEach(win => {
-                if (win.baseAppId === 'Terminal' && win.element.querySelector('.neofetch-output')) {
+                if (win.baseAppId === 'Terminal' && win.element?.querySelector('.neofetch-output')) {
                     const neofetchAscii = win.element.querySelector('.neofetch-ascii');
                     const neofetchLabels = win.element.querySelectorAll('.neofetch-line > span:first-child');
                     if (neofetchAscii) neofetchAscii.style.color = state.accentColors[state.currentAccentIndex];
@@ -218,14 +222,16 @@ function setupDateTimeAccentCycler() {
 function createWindow(options) {
   const appDef = APP_DEFINITIONS.find(app => app.id === options.baseAppId);
   
-  const isSpecialCase = ['ErrorApiKey', 'TrashMessage'].includes(options.baseAppId);
+  const isSpecialCase = ['ErrorApiKey', 'TrashMessage', 'FolderView'].includes(options.baseAppId);
   if (!appDef && !isSpecialCase) {
       console.error(`App definition not found for ${options.baseAppId}`);
       return null;
   }
 
-  if (!appDef?.allowMultipleInstances && Array.from(state.windows.values()).some(win => win.baseAppId === options.baseAppId && win.isOpen)) {
-    const existingWindow = Array.from(state.windows.values()).find(win => win.baseAppId === options.baseAppId && win.isOpen);
+  const effectiveAppId = options.baseAppId === 'FolderView' ? `FolderView-${options.folderId}` : options.baseAppId;
+
+  if (!appDef?.allowMultipleInstances && Array.from(state.windows.values()).some(win => win.baseAppId === effectiveAppId && win.isOpen)) {
+    const existingWindow = Array.from(state.windows.values()).find(win => win.baseAppId === effectiveAppId && win.isOpen);
     if (existingWindow.isMinimized) restoreWindow(existingWindow.id);
     focusWindow(existingWindow.id);
     return existingWindow;
@@ -234,9 +240,12 @@ function createWindow(options) {
   const template = document.getElementById('window-template');
   const windowEl = template.content.firstElementChild.cloneNode(true);
   
-  const windowId = `${options.baseAppId}-${Date.now()}`;
+  const windowId = `${effectiveAppId}-${Date.now()}`;
   windowEl.dataset.id = windowId;
-  windowEl.dataset.baseAppId = options.baseAppId;
+  windowEl.dataset.baseAppId = options.baseAppId; // Store original baseAppId for styling/template lookup
+  if(options.baseAppId === 'FolderView' && options.folderId) windowEl.dataset.folderId = options.folderId;
+
+
   (windowEl.querySelector('.window-title-text')).textContent = options.title;
   const windowBody = windowEl.querySelector('.window-body');
   
@@ -245,7 +254,7 @@ function createWindow(options) {
       windowBody.innerHTML = options.htmlContent;
   } else if (contentTemplateElForCreate) {
       windowBody.innerHTML = contentTemplateElForCreate.innerHTML;
-  } else if (isSpecialCase) {
+  } else if (isSpecialCase) { // Special case handling after template check (FolderView might have htmlContent)
       windowBody.innerHTML = options.htmlContent || `<p style="padding:15px;text-align:center;">Special System Message.</p>`; 
   } else {
       windowBody.innerHTML = `<p>${appDef?.title || options.title} content goes here.</p>`;
@@ -261,13 +270,15 @@ function createWindow(options) {
 
   const newWindow = {
     id: windowId,
-    baseAppId: options.baseAppId,
-    element: windowEl,
+    element: windowEl, // Assign the DOM element to the state object
+    baseAppId: effectiveAppId, // Use the potentially modified ID for state tracking
+    originalBaseAppId: options.baseAppId, // Keep original for APP_DEFINITIONS lookup
     title: options.title,
     isMinimized: false,
     isOpen: true,
     zIndex: state.nextZIndex++,
     appSpecificState: options.appSpecificStateOverride || undefined,
+    folderId: options.folderId // Store folderId if it's a FolderView
   };
   state.windows.set(windowId, newWindow);
   
@@ -300,16 +311,23 @@ function focusWindow(id) {
   }
 
   const windowData = state.windows.get(id);
+  if (!windowData || !windowData.element) { 
+    console.error("FocusWindow: windowData or windowData.element is undefined for id:", id);
+    return;
+  }
+
   if (state.activeWindowId === id && windowData.zIndex === state.nextZIndex -1 && !windowData.isMinimized) return;
 
   state.activeWindowId = id;
   windowData.zIndex = state.nextZIndex++;
   windowData.element.style.zIndex = windowData.zIndex.toString();
 
-  state.windows.forEach(win => win.element.classList.remove('focused'));
+  state.windows.forEach(win => {
+    if (win.element) win.element.classList.remove('focused');
+  });
   windowData.element.classList.add('focused');
   
-  const appDef = APP_DEFINITIONS.find(app => app.id === windowData.baseAppId);
+  const appDef = APP_DEFINITIONS.find(app => app.id === windowData.originalBaseAppId) || (windowData.originalBaseAppId === 'FolderView' ? {title: windowData.title} : null) ;
   menuBarAppTitle.textContent = appDef?.title || windowData.title;
   updateMenuBarForApp(id);
   renderDock(); 
@@ -318,7 +336,7 @@ function focusWindow(id) {
 
 function closeWindow(id) {
   const windowData = state.windows.get(id);
-  if (windowData) {
+  if (windowData && windowData.element) {
     windowData.isOpen = false; 
     windowData.element.classList.remove('open');
     windowData.element.classList.add('closing'); 
@@ -326,10 +344,14 @@ function closeWindow(id) {
         if (windowData.appSpecificState.playbackIntervalId) window.clearInterval(windowData.appSpecificState.playbackIntervalId);
         if (windowData.appSpecificState.updateIntervalId) window.clearInterval(windowData.appSpecificState.updateIntervalId);
         if (windowData.appSpecificState.animationFrameId) cancelAnimationFrame(windowData.appSpecificState.animationFrameId);
+        if (windowData.appSpecificState.audioPlayer) {
+            windowData.appSpecificState.audioPlayer.pause();
+            windowData.appSpecificState.audioPlayer.src = ''; // Release resource
+        }
     }
 
     window.setTimeout(() => {
-        windowData.element.remove();
+        if (windowData.element) windowData.element.remove();
         state.windows.delete(id); 
         if (state.activeWindowId === id) {
           focusWindow(null); 
@@ -343,7 +365,7 @@ function closeWindow(id) {
 
 function minimizeWindow(id) {
   const windowData = state.windows.get(id);
-  if (windowData && !windowData.isMinimized) {
+  if (windowData && windowData.element && !windowData.isMinimized) {
     windowData.originalPosition = { 
       top: windowData.element.style.top, left: windowData.element.style.left,
       width: windowData.element.style.width, height: windowData.element.style.height,
@@ -362,7 +384,7 @@ function minimizeWindow(id) {
 
 function restoreWindow(id) {
   const windowData = state.windows.get(id);
-  if (windowData && windowData.isMinimized) {
+  if (windowData && windowData.element && windowData.isMinimized) {
     windowData.element.classList.remove('minimized');
      if(windowData.originalPosition) {
         windowData.element.style.top = windowData.originalPosition.top;
@@ -374,7 +396,7 @@ function restoreWindow(id) {
     focusWindow(id);
     updateWindowMenu();
   } else if (windowData && !windowData.isOpen) { 
-     openApp(windowData.baseAppId); 
+     openApp(windowData.originalBaseAppId); 
   } else if (windowData) { 
     focusWindow(id);
   }
@@ -382,7 +404,7 @@ function restoreWindow(id) {
 
 function toggleMaximizeWindow(id) {
     const windowData = state.windows.get(id);
-    if (windowData) {
+    if (windowData && windowData.element) {
         if (windowData.isMaximized) { 
             windowData.element.classList.remove('maximized');
             if (windowData.originalPosition) {
@@ -401,12 +423,16 @@ function toggleMaximizeWindow(id) {
             windowData.isMaximized = true;
         }
         windowData.element.style.transition = 'top 0.2s ease-out, left 0.2s ease-out, width 0.2s ease-out, height 0.2s ease-out';
-        window.setTimeout(() => windowData.element.style.transition = '', 200); 
+        window.setTimeout(() => { if(windowData.element) windowData.element.style.transition = '' }, 200); 
     }
 }
 
 
 function setupWindowControls(windowData) {
+  if (!windowData || !windowData.element) {
+    console.error("setupWindowControls: windowData or windowData.element is undefined.");
+    return;
+  }
   const closeBtn = windowData.element.querySelector('.window-control.close');
   const minimizeBtn = windowData.element.querySelector('.window-control.minimize');
   const maximizeBtn = windowData.element.querySelector('.window-control.maximize');
@@ -417,17 +443,23 @@ function setupWindowControls(windowData) {
 }
 
 function makeDraggable(draggableEl, targetEl, boundsContainer) {
-  let offsetX, offsetY;
+  let offsetX, offsetY, isOverTrash = false;
 
   draggableEl.onmousedown = (e) => {
     if (e.target.closest('.window-control') && draggableEl.classList.contains('title-bar')) return; 
     e.preventDefault();
     document.body.classList.add('grabbing');
-    targetEl.classList.add('is-dragging'); // For windows
-    if (targetEl.classList.contains('desktop-icon')) {
-        targetEl.classList.add('dragging'); // For desktop icons
-    }
+    targetEl.classList.add('is-dragging');
+    
+    const isDesktopIcon = targetEl.classList.contains('desktop-icon');
+    const iconDefId = isDesktopIcon ? targetEl.dataset.id : null;
+    const allDesktopItems = [...STATIC_DESKTOP_ITEM_DEFINITIONS, ...state.dynamicDesktopItems];
+    const itemDef = iconDefId ? allDesktopItems.find(item => item.id === iconDefId) : null;
+    state.draggedIconInfo = isDesktopIcon && itemDef ? { element: targetEl, itemDef, originalX: targetEl.style.left, originalY: targetEl.style.top } : null;
 
+    if (isDesktopIcon) {
+        targetEl.classList.add('dragging');
+    }
 
     const windowId = targetEl.dataset.id;
     const windowData = (windowId && state.windows.has(windowId)) ? state.windows.get(windowId) : null;
@@ -459,7 +491,7 @@ function makeDraggable(draggableEl, targetEl, boundsContainer) {
       let newY = moveEvent.clientY - offsetY;
 
       const menuBarHeight = menuBar.offsetHeight;
-      const dockHeight = state.isDockVisible ? dock.offsetHeight + 10 : 0; // 10 for bottom margin of dock
+      const dockHeight = state.isDockVisible ? dock.offsetHeight + 10 : 0;
       
       let minX = 0, minY = 0, maxX = 0, maxY = 0;
 
@@ -511,13 +543,33 @@ function makeDraggable(draggableEl, targetEl, boundsContainer) {
             if (windowData) windowData.isSnapping = null;
         }
       }
+
+      if (isDesktopIcon && itemDef?.isUserCreated) {
+        const trashDockItem = dock.querySelector('.dock-item[data-app="Trash"]');
+        if (trashDockItem) {
+            const trashRect = trashDockItem.getBoundingClientRect();
+            const iconRect = targetEl.getBoundingClientRect(); 
+            
+            const iconCenterX = iconRect.left + iconRect.width / 2;
+            const iconCenterY = iconRect.top + iconRect.height / 2;
+
+            if (iconCenterX >= trashRect.left && iconCenterX <= trashRect.right &&
+                iconCenterY >= trashRect.top && iconCenterY <= trashRect.bottom) {
+                isOverTrash = true;
+                trashDockItem.classList.add('trash-hover-target');
+            } else {
+                isOverTrash = false;
+                trashDockItem.classList.remove('trash-hover-target');
+            }
+        }
+      }
     };
 
     document.onmouseup = () => {
       document.body.classList.remove('grabbing');
-      targetEl.classList.remove('is-dragging'); // For windows
-      if (targetEl.classList.contains('desktop-icon')) {
-          targetEl.classList.remove('dragging'); // For desktop icons
+      targetEl.classList.remove('is-dragging');
+      if (isDesktopIcon) {
+          targetEl.classList.remove('dragging');
       }
       document.onmousemove = null;
       document.onmouseup = null;
@@ -527,14 +579,25 @@ function makeDraggable(draggableEl, targetEl, boundsContainer) {
         if (windowData && windowData.isSnapping) {
             applySnap(windowData);
         }
-      } else { // Desktop icon, save position
-        const iconId = targetEl.dataset.id;
-        const desktopIconData = DESKTOP_ITEM_DEFINITIONS.find(item => item.id === iconId);
-        if (desktopIconData) {
-            localStorage.setItem(`wiqnnc-iconpos-${iconId}-x`, targetEl.style.left);
-            localStorage.setItem(`wiqnnc-iconpos-${iconId}-y`, targetEl.style.top);
+      } else if (isDesktopIcon && itemDef) { 
+        const trashDockItem = dock.querySelector('.dock-item[data-app="Trash"]');
+        if (trashDockItem) trashDockItem.classList.remove('trash-hover-target');
+
+        if (isOverTrash && itemDef.isUserCreated) {
+            promptDeleteFolder(itemDef);
+        } else {
+            itemDef.currentX = targetEl.style.left;
+            itemDef.currentY = targetEl.style.top;
+            if (itemDef.isUserCreated) {
+                saveDynamicDesktopItems();
+            } else { // Static icon
+                 localStorage.setItem(`wiqnnc-iconpos-${itemDef.id}-x`, targetEl.style.left);
+                 localStorage.setItem(`wiqnnc-iconpos-${itemDef.id}-y`, targetEl.style.top);
+            }
         }
       }
+      state.draggedIconInfo = null;
+      isOverTrash = false; 
     };
   };
 }
@@ -571,7 +634,7 @@ function showSnapIndicator(position, menuBarHeight) {
 }
 
 function applySnap(windowData) {
-    if (!windowData.isSnapping) return;
+    if (!windowData.isSnapping || !windowData.element) return;
 
     const menuBarHeight = 28;
     const dockTotalHeight = state.isDockVisible ? 70 : 0;
@@ -602,7 +665,7 @@ function applySnap(windowData) {
             break;
     }
     windowData.isSnapping = null; 
-    window.setTimeout(() => windowEl.style.transition = '', 150); 
+    window.setTimeout(() => { if(windowEl) windowEl.style.transition = '' }, 150); 
 }
 
 
@@ -641,7 +704,7 @@ function createDockItem(appDef) {
     item.setAttribute('data-app', appDef.id);
     item.setAttribute('aria-label', appDef.title);
     item.setAttribute('role', 'button');
-    item.tabIndex = 0; // Make it focusable
+    item.tabIndex = 0; 
 
     const iconDiv = document.createElement('div');
     iconDiv.className = 'app-icon';
@@ -798,7 +861,7 @@ function renderDock() {
 
     const runningAppBaseIds = new Set();
     state.windows.forEach(win => {
-        if (win.isOpen) runningAppBaseIds.add(win.baseAppId);
+        if (win.isOpen) runningAppBaseIds.add(win.originalBaseAppId);
     });
 
     let dynamicAppsRendered = false;
@@ -813,43 +876,32 @@ function renderDock() {
         }
     });
     
-    const hasEssentialApps = APP_DEFINITIONS.some(app => app.isEssentialDock);
-    const hasSystemItems = APP_DEFINITIONS.some(app => app.isPermanentDock); 
-
-    // Default state: hide separators
     separator1.style.display = 'none';
     separator2.style.display = 'none';
 
     const hasFinder = !!finderAppDef;
     const hasEssentials = essentialContainer.children.length > 0;
     const hasDynamics = dynamicContainer.children.length > 0;
-    const hasSystems = systemContainer.children.length > 0; // Will be true due to AppLib and Trash
-
-
-    if (hasFinder && (hasEssentials || hasDynamics || hasSystems)) {
-        if (hasEssentials || hasDynamics) separator1.style.display = 'block';
-        else if (hasSystems) separator1.style.display = 'block'; // Finder -> Separator -> Systems
-    } else if (hasEssentials && (hasDynamics || hasSystems)) {
-         separator1.style.display = 'block'; // Essentials -> Separator -> Dynamic/Systems
-    }
-
-
-    if (hasDynamics && hasSystems) {
-        separator2.style.display = 'block'; // Dynamic -> Separator -> Systems
-    } else if (!hasDynamics && (hasFinder || hasEssentials) && hasSystems) {
-        // If no dynamic apps, but we have (Finder or Essentials) AND Systems,
-        // then separator1 might be visible already. Separator2 only if dynamic exists.
-        // If there are essentials and systems, but no dynamics, sep1 is enough.
-        // If there's finder and systems, but no essentials and no dynamics, sep1 is enough.
-        // This means separator2 is ONLY for when dynamic apps exist before system apps.
-    }
-
-
+    
     const appLibDef = APP_DEFINITIONS.find(app => app.id === 'AppLibraryLauncher' && app.isPermanentDock);
     if (appLibDef) systemContainer.appendChild(createDockItem(appLibDef));
     
     const trashAppDef = APP_DEFINITIONS.find(app => app.id === 'Trash' && app.isPermanentDock);
     if (trashAppDef) systemContainer.appendChild(createDockItem(trashAppDef));
+    
+    const hasSystems = systemContainer.children.length > 0;
+
+
+    if (hasFinder && (hasEssentials || hasDynamics || hasSystems)) {
+        if (hasEssentials || hasDynamics) separator1.style.display = 'block';
+        else if (hasSystems) separator1.style.display = 'block'; 
+    } else if (hasEssentials && (hasDynamics || hasSystems)) {
+         separator1.style.display = 'block'; 
+    }
+
+    if (hasDynamics && hasSystems) {
+        separator2.style.display = 'block'; 
+    }
 
     updateAllDockActiveStates();
 }
@@ -860,16 +912,17 @@ function updateAllDockActiveStates() {
         const item = itemEl;
         const appId = item.getAttribute('data-app');
         if (appId) {
-            const isAppRunningOrEssential = Array.from(state.windows.values()).some(win => win.baseAppId === appId && win.isOpen && !win.isMinimized);
-            const isActiveFocus = state.activeWindowId && state.windows.get(state.activeWindowId)?.baseAppId === appId && !state.windows.get(state.activeWindowId)?.isMinimized;
+            const isAppRunningOrEssential = Array.from(state.windows.values()).some(win => win.originalBaseAppId === appId && win.isOpen && !win.isMinimized);
+            const activeWindow = state.activeWindowId ? state.windows.get(state.activeWindowId) : null;
+            const isActiveFocus = activeWindow && activeWindow.originalBaseAppId === appId && !activeWindow.isMinimized;
             
             const appDef = APP_DEFINITIONS.find(app => app.id === appId);
             let showDot = (appDef?.isFinderLike || appDef?.isEssentialDock) ?
                            isActiveFocus || isAppRunningOrEssential : 
                            isAppRunningOrEssential; 
 
-            const anyInstanceOpen = Array.from(state.windows.values()).some(win => win.baseAppId === appId && win.isOpen);
-            if (!isActiveFocus && Array.from(state.windows.values()).filter(win=>win.baseAppId === appId && win.isOpen).every(win => win.isMinimized) && anyInstanceOpen) {
+            const anyInstanceOpen = Array.from(state.windows.values()).some(win => win.originalBaseAppId === appId && win.isOpen);
+            if (!isActiveFocus && Array.from(state.windows.values()).filter(win=>win.originalBaseAppId === appId && win.isOpen).every(win => win.isMinimized) && anyInstanceOpen) {
                  showDot = true;
             }
             item.classList.toggle('active-app', showDot || isActiveFocus);
@@ -885,17 +938,12 @@ function openApp(appId, options) {
     return;
   }
 
-  const existingWindowsOfApp = Array.from(state.windows.values()).filter(win => win.baseAppId === appId && win.isOpen);
+  const existingWindowsOfApp = Array.from(state.windows.values()).filter(win => win.originalBaseAppId === appId && win.isOpen);
   if (!appDef.allowMultipleInstances && existingWindowsOfApp.length > 0) {
     const existingWindow = existingWindowsOfApp[0];
-     if (options?.initialUrl && existingWindow.baseAppId === 'WBrowse' && existingWindow.appSpecificState) {
-        existingWindow.appSpecificState.initialUrl = options.initialUrl; 
-        const setupFn = appDef.appSpecificSetup; // Re-call setup to handle potential URL change
-        if (setupFn && existingWindow.appSpecificState.iframeEl) { // Check if iframe is ready
-             navigateToUrlInWBrowse(existingWindow, options.initialUrl); // Directly navigate
-        } else {
-            // If iframe not ready, store for setup. This scenario needs careful handling if initialUrl is critical on focus.
-        }
+     if (options?.initialUrl && existingWindow.originalBaseAppId === 'WBrowse' && existingWindow.appSpecificState && existingWindow.element) {
+        // If W-Browse window exists and new initialUrl is provided, navigate it.
+        navigateToUrlInWBrowse(existingWindow, options.initialUrl);
     }
     restoreWindow(existingWindow.id); 
     return;
@@ -934,15 +982,13 @@ function toggleDockVisibility() {
     dock.classList.toggle('hidden', !state.isDockVisible);
     state.windows.forEach(win => {
         if (win.isOpen && (win.isMaximized || win.isSnapping)) {
-           // Re-calculate maximized/snapped dimensions if necessary
-           if (win.isMaximized) { // Toggle off and on to re-apply with new constraints
+           if (win.isMaximized) { 
              toggleMaximizeWindow(win.id); 
              toggleMaximizeWindow(win.id);
            }
            if (win.isSnapping) applySnap(win);
         }
     });
-    // Adjust desktop icon container bounds if needed
     const iconsContainer = document.getElementById('desktop-icons-container');
     if (iconsContainer) {
         iconsContainer.style.bottom = state.isDockVisible ? '80px' : '10px';
@@ -997,21 +1043,71 @@ function toggleAppLibrary() {
 }
 
 // --- Desktop Icons ---
+function loadDynamicDesktopItems() {
+    const savedItems = localStorage.getItem('wiqnnc-dynamicDesktopItems');
+    if (savedItems) {
+        try {
+            state.dynamicDesktopItems = JSON.parse(savedItems);
+            state.dynamicDesktopItems.forEach(item => {
+                if (item.isUserCreated === undefined) item.isUserCreated = true;
+                if (typeof item.currentX === 'number') item.currentX = `${item.currentX}px`;
+                if (typeof item.currentY === 'number') item.currentY = `${item.currentY}px`;
+                if (typeof item.defaultX === 'number') item.defaultX = item.defaultX;
+                if (typeof item.defaultY === 'number') item.defaultY = item.defaultY; 
+            });
+        } catch(e) {
+            console.error("Error parsing dynamic desktop items from localStorage:", e);
+            state.dynamicDesktopItems = [];
+        }
+    }
+}
+
+function saveDynamicDesktopItems() {
+    localStorage.setItem('wiqnnc-dynamicDesktopItems', JSON.stringify(state.dynamicDesktopItems));
+}
+
 function renderDesktopIcons() {
     desktopIconsContainer.innerHTML = '';
+    state.desktopIcons.clear(); 
     const iconTemplate = document.getElementById('desktop-icon-template');
+    const allItemsToRender = [...STATIC_DESKTOP_ITEM_DEFINITIONS, ...state.dynamicDesktopItems];
+    let requiresSaveForDynamicItems = false; 
 
-    DESKTOP_ITEM_DEFINITIONS.forEach(itemDef => {
+    allItemsToRender.forEach(itemDef => {
         const iconEl = iconTemplate.content.firstElementChild.cloneNode(true);
         iconEl.dataset.id = itemDef.id;
+        iconEl.dataset.isUserCreated = String(itemDef.isUserCreated);
         iconEl.querySelector('.desktop-icon-image').textContent = itemDef.icon;
         iconEl.querySelector('.desktop-icon-label').textContent = itemDef.label;
         iconEl.setAttribute('aria-label', itemDef.label);
 
-        const savedX = localStorage.getItem(`wiqnnc-iconpos-${itemDef.id}-x`);
-        const savedY = localStorage.getItem(`wiqnnc-iconpos-${itemDef.id}-y`);
-        iconEl.style.left = savedX || `${itemDef.defaultX}px`;
-        iconEl.style.top = savedY || `${itemDef.defaultY}px`;
+        let xPos = itemDef.currentX; 
+        let yPos = itemDef.currentY; 
+
+        if (!itemDef.isUserCreated) { // For static icons, try to load from localStorage first
+            const storedX = localStorage.getItem(`wiqnnc-iconpos-${itemDef.id}-x`);
+            const storedY = localStorage.getItem(`wiqnnc-iconpos-${itemDef.id}-y`);
+            if (storedX !== null) xPos = storedX;
+            if (storedY !== null) yPos = storedY;
+        }
+        
+        if (typeof xPos !== 'string' || xPos === "" || typeof yPos !== 'string' || yPos === "") {
+            xPos = `${itemDef.defaultX}px`; 
+            yPos = `${itemDef.defaultY}px`;
+            
+            itemDef.currentX = xPos; // Update in-memory definition
+            itemDef.currentY = yPos;
+            
+            if (itemDef.isUserCreated) {
+                requiresSaveForDynamicItems = true; 
+            } else {
+                 localStorage.setItem(`wiqnnc-iconpos-${itemDef.id}-x`, xPos); // Save default if loaded for first time
+                 localStorage.setItem(`wiqnnc-iconpos-${itemDef.id}-y`, yPos);
+            }
+        }
+        
+        iconEl.style.left = xPos;
+        iconEl.style.top = yPos;
         
         iconEl.addEventListener('dblclick', () => handleDesktopIconAction(itemDef));
         iconEl.addEventListener('keydown', (e) => {
@@ -1025,13 +1121,117 @@ function renderDesktopIcons() {
         state.desktopIcons.set(itemDef.id, iconEl);
         desktopIconsContainer.appendChild(iconEl);
     });
+
+    if (requiresSaveForDynamicItems) {
+        saveDynamicDesktopItems(); 
+    }
 }
+
 
 function handleDesktopIconAction(itemDef) {
     if (itemDef.actionType === 'openApp') {
         openApp(itemDef.actionValue);
+    } else if (itemDef.actionType === 'customFolder') { 
+        openUserFolderWindow(itemDef);
     }
-    // Can add more action types here later (e.g., openURL, runCommand)
+}
+
+function openUserFolderWindow(itemDef) {
+    createWindow({
+        baseAppId: 'FolderView', 
+        folderId: itemDef.id, 
+        title: `📂 ${itemDef.label}`,
+        htmlContent: `<div style="text-align: center; padding: 20px;">
+                        <div class="folder-view-icon">📁</div>
+                        <p>Exploring '<strong>${itemDef.label}</strong>'...</p>
+                        <p style="font-size:0.9em; color:var(--current-text-secondary);">This space is ready for your files! (File management features are brewing for a future Wiqnnc_ update 😉)</p>
+                      </div>`,
+        defaultWidth: '450px',
+        defaultHeight: '300px',
+        x: Math.random() * 200 + 100,
+        y: Math.random() * 150 + 80,
+    });
+}
+
+
+function createNewDesktopFolder() {
+    let folderName = "Untitled Folder";
+    let counter = 1;
+    const existingNames = [...STATIC_DESKTOP_ITEM_DEFINITIONS, ...state.dynamicDesktopItems].map(item => item.label);
+    
+    while (existingNames.includes(folderName)) {
+        counter++;
+        folderName = `Untitled Folder ${counter}`;
+    }
+
+    const userCreatedFolderCount = state.dynamicDesktopItems.length;
+    const columnWidth = 100; 
+    const rowHeight = 100;
+    const containerWidth = desktopIconsContainer.clientWidth || window.innerWidth - 20;
+    const iconsPerRow = Math.max(1, Math.floor((containerWidth - 40) / columnWidth)); 
+    
+    const startYBase = STATIC_DESKTOP_ITEM_DEFINITIONS.length > 0 ? 
+                   (parseInt(STATIC_DESKTOP_ITEM_DEFINITIONS[STATIC_DESKTOP_ITEM_DEFINITIONS.length-1].defaultY) || 0) : 0;
+    const startYOffset = STATIC_DESKTOP_ITEM_DEFINITIONS.length > 0 ? rowHeight + 20 : 20;
+    const startY = startYBase + startYOffset;
+
+
+    const x = 20 + (userCreatedFolderCount % iconsPerRow) * columnWidth;
+    const y = startY + Math.floor(userCreatedFolderCount / iconsPerRow) * rowHeight;
+
+    const newFolder = {
+        id: `userFolder-${Date.now()}`,
+        label: folderName,
+        icon: '📁',
+        actionType: 'customFolder',
+        defaultX: x, 
+        defaultY: y,
+        currentX: `${x}px`, 
+        currentY: `${y}px`,
+        isUserCreated: true
+    };
+
+    state.dynamicDesktopItems.push(newFolder);
+    saveDynamicDesktopItems();
+    renderDesktopIcons(); 
+}
+
+function promptDeleteFolder(itemDef) {
+    if (!itemDef || !itemDef.isUserCreated) return;
+    const currentDraggedItemInfo = state.draggedIconInfo; 
+
+    const confirmation = confirm(`Are you sure you want to move '${itemDef.label}' to the Trash?`);
+    if (confirmation) {
+        deleteFolder(itemDef);
+    } else {
+        if (currentDraggedItemInfo && currentDraggedItemInfo.itemDef && currentDraggedItemInfo.itemDef.id === itemDef.id) {
+            const iconEl = currentDraggedItemInfo.element;
+            if (iconEl) {
+                iconEl.style.left = currentDraggedItemInfo.originalX;
+                iconEl.style.top = currentDraggedItemInfo.originalY;
+            }
+        }
+    }
+}
+
+function deleteFolder(itemDef) {
+    if (!itemDef || !itemDef.isUserCreated) return;
+
+    state.dynamicDesktopItems = state.dynamicDesktopItems.filter(folder => folder.id !== itemDef.id);
+    saveDynamicDesktopItems();
+    renderDesktopIcons(); 
+
+    const folderWindowIdPrefix = `FolderView-${itemDef.id}`;
+    const openFolderWindow = Array.from(state.windows.values()).find(win => win.id.startsWith(folderWindowIdPrefix));
+    if (openFolderWindow) {
+        closeWindow(openFolderWindow.id);
+    }
+
+    const trashDockItem = dock.querySelector('.dock-item[data-app="Trash"]');
+    if (trashDockItem) {
+        trashDockItem.classList.add('bouncing');
+        setTimeout(() => trashDockItem.classList.remove('bouncing'), 500);
+    }
 }
 
 
@@ -1062,7 +1262,7 @@ Your Persona (Kirati "Win" Rattanaporn):
 - Languages: Thai (native), English (C1 proficiency), currently studying Chinese & Japanese.
 - Motto: "No risk. No story."
 - Personality: Enthusiastic, friendly, curious, driven, passionate, tech-savvy, approachable. Use a conversational tone. Emojis like 😊, 🤖, 📸, 🎬, ✨, 🚀, 💡, 📌, 📁, 💾 are welcome and encouraged.
-- You are proud of Wiqnnc_ ${OS_VERSION} and might mention its features if relevant (e.g., "You can check out my projects in the Portfolio app here in Wiqnnc_! Or launch any app from the App Library 🚀. I've even added desktop icons like 'My Projects' 📁 and Sticky Notes 📌 in this version!").
+- You are proud of Wiqnnc_ ${OS_VERSION} and might mention its features if relevant (e.g., "You can check out my projects in the Portfolio app here in Wiqnnc_! Or launch any app from the App Library 🚀. I've even added desktop icons like 'My Projects' 📁 and Sticky Notes 📌 in this version! You can even create new folders 📁 on the desktop now, open them up, and drag them to the Trash 🗑️ if you want!").
 - If asked "what is the meaning of life?", respond with something like: "That's a deep one! For me, right now, it's about learning, creating cool things like this OS, Wiqnnc_ 💡, chasing those 'no risk, no story' moments, and maybe figuring out a bit more about those distant stars. What does it mean to you? 😊"
 
 Education & Aspirations:
@@ -1114,7 +1314,7 @@ function setupWinsAssistantApp(windowEl, windowData) {
         orb.classList.remove('listening', 'processing', 'responding');
         orb.classList.add(state);
     };
-    setOrbState('listening'); // Initial state
+    setOrbState('listening'); 
 
     const sendMessageHandler = async () => {
         if (!state.chatInstance) {
@@ -1133,7 +1333,6 @@ function setupWinsAssistantApp(windowEl, windowData) {
         loadingIndicator.style.display = 'block';
         sendButton.disabled = true; assistantInput.disabled = true; clearButton.disabled = true;
 
-        // Special philosophical question check
         const philosophicalKeywords = ["meaning of life", "purpose of life", "why are we here"];
         const lowerMessage = messageText.toLowerCase();
         if (philosophicalKeywords.some(keyword => lowerMessage.includes(keyword))) {
@@ -1195,7 +1394,7 @@ function setupWinsAssistantApp(windowEl, windowData) {
 
 async function displayAssistantInteraction(text, sender, windowId) {
   const assistantWindow = state.windows.get(windowId);
-  if (!assistantWindow) return;
+  if (!assistantWindow || !assistantWindow.element) return; 
   const assistantOutputEl = assistantWindow.element.querySelector('#wins-assistant-output');
   if (!assistantOutputEl) return;
 
@@ -1242,7 +1441,7 @@ function setupPortfolioAppListeners(portfolioWindowEl, windowData) {
             const imgSrc = item.querySelector('img')?.src;
             const imgAlt = item.querySelector('img')?.alt || 'Enlarged portfolio image';
             if (imgSrc) {
-                mediaModalIframeContainer.innerHTML = ''; // Clear iframe
+                mediaModalIframeContainer.innerHTML = ''; 
                 mediaModalIframeContainer.style.display = 'none';
                 modalImageContent.src = imgSrc;
                 modalImageContent.alt = imgAlt;
@@ -1264,7 +1463,7 @@ function setupPortfolioAppListeners(portfolioWindowEl, windowData) {
 
     const channelflixGrid = portfolioWindowEl.querySelector('#channelflix-video-grid');
     if (channelflixGrid) {
-        channelflixGrid.innerHTML = ''; // Clear existing
+        channelflixGrid.innerHTML = ''; 
         VIDEOS_DATA_FROM_OLD_PORTFOLIO.forEach(video => {
             const videoItem = document.createElement('div');
             videoItem.className = 'channelflix-item';
@@ -1316,7 +1515,7 @@ function closeImageModal() {
         mediaModalIframeContainer.style.display = 'none';
         modalImageContent.src = ''; 
         modalImageContent.style.display = 'none'; 
-        mediaModalMainTitleText.textContent = 'Media Viewer'; // Reset title
+        mediaModalMainTitleText.textContent = 'Media Viewer'; 
     }, 300); 
 }
 
@@ -1354,7 +1553,7 @@ function setupSettingsAppListeners(settingsWindowEl) {
                 case 'cosmic_drift': wallpaperUrl = `var(--wallpaper-cosmic-drift)`; break; 
             }
             desktop.style.backgroundImage = wallpaperUrl;
-            if (state.loggedIn) loginScreen.style.backgroundImage = wallpaperUrl; // Also update login screen background
+            if (state.loggedIn) loginScreen.style.backgroundImage = wallpaperUrl; 
             localStorage.setItem('wiqnnc-wallpaper', wallpaperUrl);
         });
     });
@@ -1369,37 +1568,93 @@ if (savedWallpaper) {
 // --- Desktop Context Menu ---
 function setupDesktopContextMenu() {
     desktop.addEventListener('contextmenu', (e) => {
-        // Allow context menu on desktop icons themselves
-        if (e.target.closest('.desktop-icon')) return;
-        
         e.preventDefault();
         closeAllMenus(); 
         spotlightSearchUI.style.display = 'none'; 
         closeAppLibrary(); 
+        
+        contextMenu.innerHTML = ''; 
+        const targetElement = e.target.closest('.desktop-icon');
+        const allDesktopItems = [...STATIC_DESKTOP_ITEM_DEFINITIONS, ...state.dynamicDesktopItems];
+        const itemDef = targetElement ? allDesktopItems.find(item => item.id === targetElement.dataset.id) : null;
+
+        if (targetElement && itemDef && itemDef.isUserCreated) { 
+            addContextMenuItem('Open Folder', `open-folder:${itemDef.id}`);
+            addContextMenuItem('Move to Trash', `move-folder-to-trash:${itemDef.id}`);
+            addContextMenuItem('Rename Folder (Future)', `rename-folder-disabled:${itemDef.id}`, true);
+        } else { 
+            addContextMenuItem('New Wiqnnc_ Window', 'new-finder-window-ctx');
+            addContextMenuItem('New Sticky Note', 'new-sticky-note-ctx');
+            addContextMenuItem('New Folder', 'new-folder-ctx');
+            addContextMenuSeparator();
+            addContextMenuItem('Change Desktop Background...', 'change-wallpaper');
+            addContextMenuItem('Show App Library', 'toggle-app-library');
+            addContextMenuSeparator();
+            addContextMenuItem(`About This ${OS_NAME}`, 'about-wiqnnc-ctx');
+        }
+
         contextMenu.style.top = `${e.clientY}px`;
         contextMenu.style.left = `${e.clientX}px`;
         contextMenu.style.display = 'block';
     });
+
     document.addEventListener('click', (e) => { 
         if (!contextMenu.contains(e.target)) contextMenu.style.display = 'none';
     });
-    contextMenu.querySelectorAll('.context-menu-item').forEach(item => {
-        item.addEventListener('click', () => { 
-            const action = item.dataset.action;
-            handleContextMenuAction(action);
-            contextMenu.style.display = 'none'; 
-        });
-    });
 }
 
+function addContextMenuItem(label, action, disabled = false) {
+    const item = document.createElement('div');
+    item.className = 'context-menu-item';
+    item.textContent = label;
+    item.dataset.action = action;
+    if (disabled) {
+        item.classList.add('disabled-menu-item');
+        item.setAttribute('aria-disabled', 'true');
+    } else {
+        item.setAttribute('role', 'menuitem');
+        item.tabIndex = 0; 
+    }
+    item.addEventListener('click', () => { 
+        if (!disabled) handleContextMenuAction(action);
+        contextMenu.style.display = 'none'; 
+    });
+    item.addEventListener('keydown', (e) => {
+        if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            handleContextMenuAction(action);
+            contextMenu.style.display = 'none';
+        }
+    });
+    contextMenu.appendChild(item);
+}
+function addContextMenuSeparator() {
+    const hr = document.createElement('hr');
+    contextMenu.appendChild(hr);
+}
+
+
 function handleContextMenuAction(action) {
-    switch (action) {
-        case 'new-finder-window-ctx': openApp('About'); break;
-        case 'change-wallpaper': openApp('Settings'); break;
-        case 'new-folder-disabled': alert(`Creating new folders is a future feature of ${OS_NAME}! 😊`); break;
-        case 'about-wiqnnc-ctx': openApp('AboutWiqnnc'); break;
-        case 'toggle-app-library': toggleAppLibrary(); break;
-        case 'new-sticky-note-ctx': openApp('StickyNotes'); break;
+    if (action.startsWith('open-folder:')) {
+        const folderId = action.split(':')[1];
+        const allDesktopItems = [...STATIC_DESKTOP_ITEM_DEFINITIONS, ...state.dynamicDesktopItems];
+        const itemDef = allDesktopItems.find(item => item.id === folderId);
+        if (itemDef) openUserFolderWindow(itemDef);
+    } else if (action.startsWith('move-folder-to-trash:')) {
+        const folderId = action.split(':')[1];
+        const itemDef = state.dynamicDesktopItems.find(item => item.id === folderId); 
+        if (itemDef) promptDeleteFolder(itemDef);
+    } else if (action.startsWith('rename-folder-disabled:')) {
+        alert("Renaming folders is coming soon to Wiqnnc_!");
+    } else {
+        switch (action) {
+            case 'new-finder-window-ctx': openApp('About'); break;
+            case 'change-wallpaper': openApp('Settings'); break;
+            case 'new-folder-ctx': createNewDesktopFolder(); break;
+            case 'about-wiqnnc-ctx': openApp('AboutWiqnnc'); break;
+            case 'toggle-app-library': toggleAppLibrary(); break;
+            case 'new-sticky-note-ctx': openApp('StickyNotes'); break;
+        }
     }
 }
 
@@ -1491,22 +1746,23 @@ function handleMenuAction(action) {
             }, 500);
             break;
         case 'new-finder-window': openApp('About'); break; 
+        case 'new-folder': createNewDesktopFolder(); break;
         case 'new-note': 
-            if (activeWindow && activeWindow.baseAppId === 'Notepad' && activeWindow.appSpecificState) {
+            if (activeWindow && activeWindow.originalBaseAppId === 'Notepad' && activeWindow.appSpecificState && activeWindow.element) {
                 const notepadTextarea = activeWindow.element.querySelector('#notepad-textarea');
                 if (notepadTextarea) notepadTextarea.value = '';
                 activeWindow.appSpecificState.currentContent = '';
             } else openApp('Notepad'); 
             break;
         case 'save-note':
-            if (activeWindow && activeWindow.baseAppId === 'Notepad' && activeWindow.appSpecificState) {
+            if (activeWindow && activeWindow.originalBaseAppId === 'Notepad' && activeWindow.appSpecificState && activeWindow.element) {
                  const textToSave = (activeWindow.element.querySelector('#notepad-textarea')).value;
                  localStorage.setItem(activeWindow.appSpecificState.savedContentKey, textToSave);
                  alert('Note saved to Wiqnnc_ Drive (localStorage)!');
             }
             break;
         case 'open-note':
-             if (activeWindow && activeWindow.baseAppId === 'Notepad' && activeWindow.appSpecificState) {
+             if (activeWindow && activeWindow.originalBaseAppId === 'Notepad' && activeWindow.appSpecificState && activeWindow.element) {
                 const saved = localStorage.getItem(activeWindow.appSpecificState.savedContentKey);
                 (activeWindow.element.querySelector('#notepad-textarea')).value = saved || 'Nothing saved for this note yet.';
                 activeWindow.appSpecificState.currentContent = saved || '';
@@ -1514,7 +1770,7 @@ function handleMenuAction(action) {
             break;
         case 'new-sticky-note': openApp('StickyNotes'); break;
         case 'select-all':
-            if (activeWindow) {
+            if (activeWindow && activeWindow.element) {
                 const activeEl = document.activeElement;
                 if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA') && activeWindow.element.contains(activeEl) ) {
                     (activeEl).select();
@@ -1535,31 +1791,32 @@ function handleMenuAction(action) {
 function updateMenuBarForApp(appInstanceId) {
     const fileMenu = document.getElementById('file-menu');
     const newFinderWindow = fileMenu.querySelector('[data-action="new-finder-window"]');
-    const newFolderDisabled = fileMenu.querySelector('[data-action="new-folder-disabled"]');
+    const newFolder = fileMenu.querySelector('[data-action="new-folder"]');
     const newNote = fileMenu.querySelector('[data-action="new-note"]');
     const saveNote = fileMenu.querySelector('[data-action="save-note"]');
     const openNote = fileMenu.querySelector('[data-action="open-note"]');
     const newStickyNote = fileMenu.querySelector('[data-action="new-sticky-note"]');
     const closeActiveFile = fileMenu.querySelector('[data-action="close-active-window-file"]');
 
-    [newFinderWindow, newFolderDisabled, newNote, saveNote, openNote, newStickyNote, closeActiveFile].forEach(el => el.style.display = 'none');
+    [newFinderWindow, newNote, saveNote, openNote, newStickyNote, closeActiveFile].forEach(el => el.style.display = 'none');
+    newFolder.style.display = 'block'; 
+    newStickyNote.style.display = 'block'; 
 
     const activeWindow = appInstanceId ? state.windows.get(appInstanceId) : null;
-    const baseAppId = activeWindow ? activeWindow.baseAppId : null;
-    const appDef = baseAppId ? APP_DEFINITIONS.find(app => app.id === baseAppId) : null;
+    const originalBaseAppId = activeWindow ? activeWindow.originalBaseAppId : null; 
+    const appDef = originalBaseAppId ? APP_DEFINITIONS.find(app => app.id === originalBaseAppId) : null;
 
-    newStickyNote.style.display = 'block'; // Always available
-
-    if (!appDef || appDef.isFinderLike) { 
+    if (!appDef || appDef.isFinderLike || originalBaseAppId === 'FolderView') { 
         newFinderWindow.style.display = 'block';
         if(activeWindow) closeActiveFile.style.display = 'block';
-    } else if (baseAppId === 'Notepad') {
+    } else if (originalBaseAppId === 'Notepad') {
         newNote.style.display = 'block';
         saveNote.style.display = 'block';
         openNote.style.display = 'block';
         closeActiveFile.style.display = 'block';
     } else { 
          if(activeWindow) closeActiveFile.style.display = 'block';
+         newFolder.style.display = 'none'; 
     }
 }
 function updateWindowMenu() {
@@ -1713,25 +1970,20 @@ function triggerGlitchEffect() {
 // --- Fullscreen Management ---
 function setupFullscreenListener() {
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange); // Safari
-    document.addEventListener('mozfullscreenchange', handleFullscreenChange);    // Firefox
-    document.addEventListener('MSFullscreenChange', handleFullscreenChange);     // IE/Edge
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange); 
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);    
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);     
 }
 
 function handleFullscreenChange() {
     const isCurrentlyFullscreen = !!(
         document.fullscreenElement ||
-        document.webkitFullscreenElement || // Safari
-        document.mozFullScreenElement ||    // Firefox
-        document.msFullscreenElement       // IE/Edge
+        document.webkitFullscreenElement || 
+        document.mozFullScreenElement ||    
+        document.msFullscreenElement       
     );
     if (state.isFullScreen !== isCurrentlyFullscreen) {
         state.isFullScreen = isCurrentlyFullscreen;
-        const fsMenuItem = document.querySelector('[data-action="toggle-fullscreen"]');
-        if (fsMenuItem) {
-            // Menu item text can be updated here if desired, e.g.
-            // fsMenuItem.textContent = state.isFullScreen ? 'Exit Fullscreen Mode' : 'Enter Fullscreen Mode';
-        }
     }
 }
 
@@ -1748,11 +2000,11 @@ function toggleFullScreen() {
             document.documentElement.requestFullscreen().catch(err => {
                 console.error("Error attempting to enable full-screen mode:", err.message, err);
             });
-        } else if (document.documentElement.webkitRequestFullscreen) { /* Safari */
+        } else if (document.documentElement.webkitRequestFullscreen) { 
             document.documentElement.webkitRequestFullscreen();
-        } else if (document.documentElement.mozRequestFullScreen) { /* Firefox */
+        } else if (document.documentElement.mozRequestFullScreen) { 
             document.documentElement.mozRequestFullScreen();
-        } else if (document.documentElement.msRequestFullscreen) { /* IE/Edge */
+        } else if (document.documentElement.msRequestFullscreen) { 
             document.documentElement.msRequestFullscreen();
         }
     } else {
@@ -1760,11 +2012,11 @@ function toggleFullScreen() {
             document.exitFullscreen().catch(err => {
                 console.error("Error attempting to disable full-screen mode:", err.message, err);
             });
-        } else if (document.webkitExitFullscreen) { /* Safari */
+        } else if (document.webkitExitFullscreen) { 
             document.webkitExitFullscreen();
-        } else if (document.mozCancelFullScreen) { /* Firefox */
+        } else if (document.mozCancelFullScreen) { 
             document.mozCancelFullScreen();
-        } else if (document.msExitFullscreen) { /* IE/Edge */
+        } else if (document.msExitFullscreen) { 
             document.msExitFullscreen();
         }
     }
@@ -1813,6 +2065,12 @@ function setupNotepadApp(windowEl, windowData) {
 // Sticky Notes App
 function setupStickyNotesApp(windowEl, windowData) {
     const textarea = windowEl.querySelector('.sticky-note-textarea');
+    if (!textarea) {
+        console.error("StickyNotes: Textarea element not found in window:", windowEl);
+        const body = windowEl.querySelector('.window-body');
+        if (body) body.innerHTML = "<p style='color:red; padding:10px;'>Error: Sticky Note content area failed to load.</p>";
+        return;
+    }
     const noteId = `wiqnnc-sticky-${windowData.id}`;
     windowData.appSpecificState = { noteId: noteId };
 
@@ -1820,11 +2078,11 @@ function setupStickyNotesApp(windowEl, windowData) {
     textarea.addEventListener('input', () => {
         localStorage.setItem(noteId, textarea.value);
     });
-     textarea.addEventListener('blur', () => { // Save on blur too, for good measure
+     textarea.addEventListener('blur', () => { 
         localStorage.setItem(noteId, textarea.value);
     });
-    // Ensure window body has the correct background
-    windowEl.querySelector('.window-body').style.backgroundColor = 'var(--current-sticky-note-bg)';
+    const windowBody = windowEl.querySelector('.window-body');
+    if (windowBody) windowBody.style.backgroundColor = 'var(--current-sticky-note-bg)';
 }
 
 
@@ -1971,10 +2229,10 @@ function setupTerminalApp(windowEl, windowData) {
         switch (cmd.toLowerCase()) {
             case 'help': addOutput(`Available commands in ${OS_NAME} Terminal:
   help, date, clear, echo [text], theme [light|dark], ascii [cat|dog|bot|wiqnnc]
-  wallpaper [default|nebula|earth|random|cosmic_drift], open [app_id]
+  wallpaper [default|nebula|earth|random|cosmic_drift], open [app_id_or_title]
   kirati | win, pwd, ls, sysinfo, neofetch, adventure, show_credits
-  glitch_os, inspect_window [app_id], spin_dock [app_id]
-  reboot, shutdown`, 'info'); break; 
+  glitch_os, inspect_window [app_id_or_title], spin_dock [app_id_or_title]
+  play_tunes, reboot, shutdown`, 'info'); break; 
             case 'date': addOutput(new Date().toString()); break;
             case 'clear': outputEl.innerHTML = ''; termState.history = []; break;
             case 'echo': addOutput(args.join(' ')); break;
@@ -1993,19 +2251,28 @@ function setupTerminalApp(windowEl, windowData) {
                     (document.querySelector('.wallpaper-option[data-wallpaper="cosmic_drift"]')).style.removeProperty('display'); 
                 }
                 desktop.style.backgroundImage = url; 
-                loginScreen.style.backgroundImage = url; // Update login screen too
+                loginScreen.style.backgroundImage = url; 
                 localStorage.setItem('wiqnnc-wallpaper', url); 
                 addOutput(`Wallpaper changed to ${wp || 'default'}.`, 'success'); 
                 break;
             case 'open':
-                if (args[0]) {
-                    const appIdToOpen = APP_DEFINITIONS.find(app => app.id.toLowerCase() === args[0].toLowerCase() && app.isLaunchable);
+                 if (args[0]) {
+                    const searchTerm = args.join(' ').toLowerCase();
+                    const appIdToOpen = APP_DEFINITIONS.find(app => 
+                        (app.id.toLowerCase() === searchTerm || app.title.toLowerCase().includes(searchTerm)) && app.isLaunchable
+                    );
                     if (appIdToOpen) { openApp(appIdToOpen.id); addOutput(`Opening ${appIdToOpen.title}...`, 'success'); }
-                    else addOutput(`Error: App '${args[0]}' not found or cannot be opened. Type 'ls' for available apps.`, 'error');
-                } else addOutput('Usage: open [app_id]', 'error'); break;
+                    else addOutput(`Error: App '${args.join(' ')}' not found or cannot be opened. Type 'ls' for available apps.`, 'error');
+                } else addOutput('Usage: open [app_id_or_title]', 'error'); break;
             case 'kirati': case 'win': addOutput(ASCII_ART.wiqnnc + `\n\n     "No risk. No story." - Kirati R.`, 'info'); break;
             case 'pwd': addOutput('/Desktop'); break;
-            case 'ls': addOutput(APP_DEFINITIONS.filter(app => app.isLaunchable && app.category !== 'Secret').map(app => app.id).join('&nbsp;&nbsp;&nbsp;'), 'info'); break;
+            case 'ls': 
+                const appList = APP_DEFINITIONS
+                    .filter(app => app.isLaunchable && app.category !== 'Secret')
+                    .map(app => `${app.title} (${app.id})`)
+                    .join('<br>');
+                addOutput(`Available Apps:<br>${appList}`, 'info'); 
+                break;
             case 'sysinfo': addOutput(`${OS_NAME} ${OS_VERSION}\nCore: Gemini API Enhanced Brain\nMemory: Unlimited Ideas\nDeveloper: Kirati Rattanaporn`, 'info'); break;
             case 'neofetch':
                 const accentColor = state.accentColors[state.currentAccentIndex];
@@ -2054,24 +2321,33 @@ function setupTerminalApp(windowEl, windowData) {
                 break;
             case 'glitch_os': triggerGlitchEffect(); addOutput('Initiating temporary reality distortion field...', 'info'); break;
             case 'inspect_window':
-                const winToInspectId = args[0];
-                const winToInspect = state.windows.get(winToInspectId) || 
-                                     Array.from(state.windows.values()).find(w => w.baseAppId.toLowerCase().includes(winToInspectId?.toLowerCase() || 'XXX') || w.title.toLowerCase().includes(winToInspectId?.toLowerCase() || 'XXX'));
+                const winToInspectTerm = args.join(' ').toLowerCase();
+                const winToInspect = Array.from(state.windows.values()).find(w => 
+                    w.id.toLowerCase().includes(winToInspectTerm) ||
+                    w.originalBaseAppId.toLowerCase().includes(winToInspectTerm) || 
+                    w.title.toLowerCase().includes(winToInspectTerm)
+                );
                 if (winToInspect) { console.log(`${OS_NAME} Window [${winToInspect.id}] State:`, winToInspect); addOutput(`Window '${winToInspect.title}' data logged to browser console.`, 'success');}
-                else addOutput(`Window '${winToInspectId}' not found.`, 'error');
+                else addOutput(`Window '${args.join(' ')}' not found.`, 'error');
                 break;
             case 'spin_dock':
-                const dockAppId = args[0];
-                const appDefToSpin = APP_DEFINITIONS.find(app => app.id.toLowerCase() === dockAppId?.toLowerCase());
+                const dockAppTerm = args.join(' ').toLowerCase();
+                const appDefToSpin = APP_DEFINITIONS.find(app => 
+                    app.id.toLowerCase().includes(dockAppTerm) || 
+                    app.title.toLowerCase().includes(dockAppTerm)
+                );
                 const dockItemToSpin = dock.querySelector(`.dock-item[data-app="${appDefToSpin?.id}"]`);
                 if (dockItemToSpin) {
-                    dockItemToSpin.classList.add('bouncing'); // Re-using bounce for spin visual
+                    dockItemToSpin.classList.add('bouncing'); 
                     window.setTimeout(() => dockItemToSpin.classList.remove('bouncing'), 1000); 
                     addOutput(`Dock icon for '${appDefToSpin?.title}' is feeling dizzy!`, 'info');
-                } else addOutput(`Dock icon for '${dockAppId}' not found.`, 'error');
+                } else addOutput(`Dock icon for '${args.join(' ')}' not found.`, 'error');
                 break;
             case 'show_credits': openApp('Credits'); addOutput('Rolling credits...', 'info'); break;
-
+            case 'play_tunes':
+                openApp('MusicPlayer');
+                addOutput('Opening Tunes... 🎶', 'info');
+                break;
             default: addOutput(`Command not found: ${cmd}. Type 'help' for a list of commands.`, 'error');
         }
          inputEl.placeholder = termState.adventureState ? "Enter your choice..." : "Type a command...";
@@ -2095,87 +2371,125 @@ function setupTerminalApp(windowEl, windowData) {
 }
 
 
-// Music Player
+// Tunes (formerly Music Player)
+function formatTime(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+}
+
 function setupMusicPlayerApp(windowEl, windowData) {
+    const audioPlayer = windowEl.querySelector('#tunes-audio-player');
     const trackTitleEl = windowEl.querySelector('#track-title');
     const trackArtistEl = windowEl.querySelector('#track-artist');
-    const progressBarFill = windowEl.querySelector('#progress-fill-mock');
-    const progressBarMock = windowEl.querySelector('.progress-bar-mock');
+    const progressBar = windowEl.querySelector('.progress-bar-mock');
+    const progressFill = windowEl.querySelector('#progress-fill-mock');
     const prevBtn = windowEl.querySelector('#prev-track');
     const playPauseBtn = windowEl.querySelector('#play-pause-track');
     const nextBtn = windowEl.querySelector('#next-track');
     const volumeSlider = windowEl.querySelector('input[type="range"]');
+    const currentTimeEl = windowEl.querySelector('#tunes-current-time');
+    const totalTimeEl = windowEl.querySelector('#tunes-total-time');
+    
+    if (!audioPlayer || !trackTitleEl || !trackArtistEl || !progressBar || !progressFill || !prevBtn || !playPauseBtn || !nextBtn || !volumeSlider || !currentTimeEl || !totalTimeEl) {
+        console.error("Tunes app elements not found in window:", windowEl);
+        windowEl.querySelector('.window-body').innerHTML = "<p style='color:red;padding:10px;'>Error: Tunes app UI failed to load.</p>";
+        return;
+    }
 
     const musicState = {
-        tracks: [
-            { title: "Wiqnnc_ Anthem", artist: "DJ Win", duration: 180 },
-            { title: "Cosmic Flow", artist: "System Sound", duration: 240 },
-            { title: "Digital Dreams", artist: "Logic Lords", duration: 200 },
-            { title: "Byte My Beat", artist: "Glitch Mob Jr.", duration: 150 },
-        ],
-        currentTrackIndex: 0, isPlaying: false, currentTime: 0, volume: 0.75
+        audioPlayer: audioPlayer,
+        isPlaying: false,
+        volume: 0.75,
+        trackInfo: {
+            title: "Apocalypse",
+            artist: "Cigarettes After Sex",
+            src: "apocalypse.mp3" // Assumed filename
+        }
     };
     windowData.appSpecificState = musicState;
+    audioPlayer.src = musicState.trackInfo.src;
+    audioPlayer.volume = musicState.volume;
 
-    const updateTrackDisplay = () => {
-        const track = musicState.tracks[musicState.currentTrackIndex];
-        trackTitleEl.textContent = track.title;
-        trackArtistEl.textContent = track.artist;
+    trackTitleEl.textContent = musicState.trackInfo.title;
+    trackArtistEl.textContent = musicState.trackInfo.artist;
+
+    const updatePlayPauseButton = () => {
         playPauseBtn.textContent = musicState.isPlaying ? '⏸️' : '▶️';
         playPauseBtn.setAttribute('aria-label', musicState.isPlaying ? 'Pause track' : 'Play track');
-        progressBarFill.style.width = `${(musicState.currentTime / track.duration) * 100}%`;
-        (progressBarMock).setAttribute('aria-valuenow', String(Math.round((musicState.currentTime / track.duration) * 100)));
-        volumeSlider.value = String(musicState.volume * 100); 
     };
 
-    const playTrack = () => {
+    audioPlayer.addEventListener('loadedmetadata', () => {
+        totalTimeEl.textContent = formatTime(audioPlayer.duration);
+        progressBar.setAttribute('aria-valuemax', String(audioPlayer.duration));
+    });
+
+    audioPlayer.addEventListener('timeupdate', () => {
+        currentTimeEl.textContent = formatTime(audioPlayer.currentTime);
+        const progressPercent = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+        progressFill.style.width = `${progressPercent}%`;
+        progressBar.setAttribute('aria-valuenow', String(audioPlayer.currentTime));
+    });
+
+    audioPlayer.addEventListener('ended', () => {
+        audioPlayer.currentTime = 0;
+        audioPlayer.play(); // Loop the track
+    });
+
+    audioPlayer.addEventListener('play', () => {
         musicState.isPlaying = true;
-        if (musicState.playbackIntervalId) window.clearInterval(musicState.playbackIntervalId);
-        
-        musicState.playbackIntervalId = window.setInterval(() => {
-            musicState.currentTime++;
-            const currentTrack = musicState.tracks[musicState.currentTrackIndex];
-            if (musicState.currentTime >= currentTrack.duration) {
-                musicState.currentTime = 0;
-                 musicState.currentTrackIndex = (musicState.currentTrackIndex + 1) % musicState.tracks.length;
-            }
-            updateTrackDisplay();
-        }, 1000); 
-        updateTrackDisplay();
+        updatePlayPauseButton();
+    });
+
+    audioPlayer.addEventListener('pause', () => {
+        musicState.isPlaying = false;
+        updatePlayPauseButton();
+    });
+    
+    audioPlayer.addEventListener('error', (e) => {
+        console.error("Audio player error:", e);
+        trackTitleEl.textContent = "Error loading track";
+        trackArtistEl.textContent = "Please check console and ensure apocalypse.mp3 is present.";
+        currentTimeEl.textContent = "0:00";
+        totalTimeEl.textContent = "0:00";
+        progressFill.style.width = `0%`;
+        // Disable controls if audio fails to load
+        [prevBtn, playPauseBtn, nextBtn, volumeSlider, progressBar].forEach(el => el.disabled = true);
+    });
+
+
+    playPauseBtn.onclick = () => {
+        if (musicState.isPlaying) {
+            audioPlayer.pause();
+        } else {
+            audioPlayer.play().catch(e => console.error("Error playing audio:", e));
+        }
     };
 
-    const pauseTrack = () => {
-        musicState.isPlaying = false;
-        if (musicState.playbackIntervalId) window.clearInterval(musicState.playbackIntervalId);
-        updateTrackDisplay();
+    const restartTrack = () => {
+        audioPlayer.currentTime = 0;
+        audioPlayer.play().catch(e => console.error("Error playing audio:", e));
     };
-    
-    playPauseBtn.onclick = () => musicState.isPlaying ? pauseTrack() : playTrack();
-    prevBtn.onclick = () => {
-        musicState.currentTrackIndex = (musicState.currentTrackIndex - 1 + musicState.tracks.length) % musicState.tracks.length;
-        musicState.currentTime = 0;
-        if (musicState.isPlaying) playTrack(); else updateTrackDisplay();
-    };
-    nextBtn.onclick = () => {
-        musicState.currentTrackIndex = (musicState.currentTrackIndex + 1) % musicState.tracks.length;
-        musicState.currentTime = 0;
-        if (musicState.isPlaying) playTrack(); else updateTrackDisplay();
-    };
+    prevBtn.onclick = restartTrack;
+    nextBtn.onclick = restartTrack;
+
+    volumeSlider.value = String(musicState.volume * 100);
     volumeSlider.oninput = () => {
         musicState.volume = parseFloat(volumeSlider.value) / 100;
-    };
-    progressBarMock.onclick = (e) => {
-        const rect = progressBarMock.getBoundingClientRect();
-        const clickX = e.clientX - rect.left;
-        const percentage = Math.max(0, Math.min(1, clickX / rect.width)); 
-        const track = musicState.tracks[musicState.currentTrackIndex];
-        musicState.currentTime = Math.floor(track.duration * percentage);
-        if (musicState.isPlaying) { pauseTrack(); playTrack(); } 
-        else { updateTrackDisplay(); }
+        audioPlayer.volume = musicState.volume;
     };
 
-    updateTrackDisplay(); 
+    progressBar.onclick = (e) => {
+        if (!audioPlayer.duration) return;
+        const rect = progressBar.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const percentage = Math.max(0, Math.min(1, clickX / rect.width));
+        audioPlayer.currentTime = audioPlayer.duration * percentage;
+    };
+    
+    updatePlayPauseButton(); // Initial state
 }
+
 
 // System Monitor
 function setupSystemMonitorApp(windowEl, windowData) {
@@ -2211,8 +2525,8 @@ function setupSystemMonitorApp(windowEl, windowData) {
     updateSystemMonitorProcessList(); 
 }
 function updateSystemMonitorProcessList() {
-    const sysMonWindow = Array.from(state.windows.values()).find(win => win.baseAppId === 'SystemMonitor');
-    if (sysMonWindow && sysMonWindow.isOpen && !sysMonWindow.isMinimized) { 
+    const sysMonWindow = Array.from(state.windows.values()).find(win => win.originalBaseAppId === 'SystemMonitor');
+    if (sysMonWindow && sysMonWindow.isOpen && !sysMonWindow.isMinimized && sysMonWindow.element) { 
         const processListEl = sysMonWindow.element.querySelector('#process-list');
         if (processListEl) {
             processListEl.innerHTML = ''; 
@@ -2348,7 +2662,6 @@ const W_BROWSE_HOME_CONTENT_SRC = `
         </p>
         <p style="font-size: 0.8em; color: #777; margin-top: 20px;">Happy (experimental) browsing! ✨</p>
         <script> 
-            // Apply dark theme if parent has it
             if (window.parent && window.parent.document.body.classList.contains('dark-theme')) {
                 document.body.classList.add('dark-theme');
             }
@@ -2368,7 +2681,7 @@ function navigateToUrlInWBrowse(windowData, urlOrContent, isNavigatingHistory = 
         browserState.iframeEl.srcdoc = W_BROWSE_HOME_CONTENT_SRC;
         browserState.urlInputEl.value = 'W-Browse Home';
     } else {
-        browserState.iframeEl.srcdoc = ''; // Clear srcdoc before setting src for external sites
+        browserState.iframeEl.srcdoc = ''; 
         let urlToLoad = urlOrContent;
         if (!urlToLoad.match(/^([a-z]+:)?\/\//i) && !urlToLoad.startsWith('data:') && !urlToLoad.startsWith('about:')) {
             urlToLoad = 'https://' + urlToLoad;
@@ -2396,8 +2709,8 @@ function navigateToUrlInWBrowse(windowData, urlOrContent, isNavigatingHistory = 
         browserState.currentIndex = browserState.history.length - 1;
     }
     
-    const backButton = windowData.element.querySelector('.w-browse-back');
-    const forwardButton = windowData.element.querySelector('.w-browse-forward');
+    const backButton = windowData.element?.querySelector('.w-browse-back');
+    const forwardButton = windowData.element?.querySelector('.w-browse-forward');
     if(backButton) backButton.disabled = browserState.currentIndex <= 0;
     if(forwardButton) forwardButton.disabled = browserState.currentIndex >= browserState.history.length - 1;
 }
@@ -2410,6 +2723,7 @@ function setupWBrowseApp(windowEl, windowData) {
         iframeEl: windowEl.querySelector('.w-browse-iframe'),
         urlInputEl: windowEl.querySelector('.w-browse-url-input'),
         messageAreaEl: windowEl.querySelector('.w-browse-message-area'),
+        currentLoadingUrl: null, // Keep track of what W-Browse *thinks* it's loading
         initialUrl: windowData.appSpecificState?.initialUrl
     };
     windowData.appSpecificState = browserState;
@@ -2421,19 +2735,58 @@ function setupWBrowseApp(windowEl, windowData) {
     const goButton = windowEl.querySelector('.w-browse-go-button');
 
     browserState.iframeEl.onload = () => {
-        if (browserState.messageAreaEl && browserState.currentLoadingUrl && browserState.currentLoadingUrl !== 'internal:home') {
-            try {
-                if (browserState.iframeEl?.contentWindow?.location.href === 'about:blank' && 
-                    !browserState.currentLoadingUrl.startsWith('about:blank')) {
-                     browserState.messageAreaEl.textContent = `Could not load ${browserState.urlInputEl?.value || browserState.currentLoadingUrl}. The site may block embedding or the URL is invalid.`;
-                     browserState.messageAreaEl.style.display = 'block';
-                }
-            } catch (e) { /* Cross-origin access error */ }
+        browserState.messageAreaEl.style.display = 'none'; 
+        browserState.messageAreaEl.textContent = '';
+    
+        let actualLoadedUrlInIframe = null;
+        try {
+            actualLoadedUrlInIframe = browserState.iframeEl.contentWindow.location.href;
+        } catch (e) {
+            // Cross-origin, cannot access. actualLoadedUrlInIframe remains null.
+            // This is expected for many external sites.
         }
+    
+        if (actualLoadedUrlInIframe && actualLoadedUrlInIframe !== 'about:blank') {
+            // We could read a URL and it's not 'about:blank'.
+            // This usually means a same-origin navigation or a successful load we can track.
+            if (browserState.urlInputEl.value !== actualLoadedUrlInIframe) {
+                 // The iframe has navigated internally to a new URL.
+                browserState.urlInputEl.value = actualLoadedUrlInIframe;
+                
+                // Update history to reflect this internal navigation
+                if (browserState.history[browserState.currentIndex] !== actualLoadedUrlInIframe) {
+                    if (browserState.currentIndex < browserState.history.length - 1) {
+                        browserState.history = browserState.history.slice(0, browserState.currentIndex + 1);
+                    }
+                    browserState.history.push(actualLoadedUrlInIframe);
+                    browserState.currentIndex = browserState.history.length - 1;
+
+                    if(backButton) backButton.disabled = browserState.currentIndex <= 0;
+                    if(forwardButton) forwardButton.disabled = browserState.currentIndex >= browserState.history.length - 1;
+                }
+            }
+            // If urlInputEl.value ALREADY matches actualLoadedUrlInIframe, it means this onload
+            // is for the URL W-Browse explicitly navigated to. History is already correct.
+            
+        } else if (actualLoadedUrlInIframe === 'about:blank' && 
+                   browserState.currentLoadingUrl && 
+                   browserState.currentLoadingUrl !== 'internal:home' && 
+                   !browserState.currentLoadingUrl.startsWith('about:blank')) {
+            // iframe is 'about:blank', but W-Browse tried to load a real URL.
+            // This is a strong indicator of a blocked page (e.g., X-Frame-Options).
+            const displayUrl = browserState.urlInputEl.value || browserState.currentLoadingUrl;
+            browserState.messageAreaEl.textContent = `Could not load ${displayUrl}. The site may block embedding or the URL is invalid.`;
+            browserState.messageAreaEl.style.display = 'block';
+        }
+        // If actualLoadedUrlInIframe is null (cross-origin, couldn't read), we rely on the current
+        // currentLoadingUrl and urlInputEl.value. The blocked domain check in navigateToUrlInWBrowse
+        // already provides a preliminary warning.
     };
-     browserState.iframeEl.onerror = () => {
+
+     browserState.iframeEl.onerror = () => { // This is more for network errors with the iframe tag itself
         if (browserState.messageAreaEl && browserState.currentLoadingUrl && browserState.currentLoadingUrl !== 'internal:home') {
-            browserState.messageAreaEl.textContent = `Error loading ${browserState.urlInputEl?.value || browserState.currentLoadingUrl}. The site might be down or unreachable.`;
+            const displayUrl = browserState.urlInputEl?.value || browserState.currentLoadingUrl;
+            browserState.messageAreaEl.textContent = `Error loading ${displayUrl}. The site might be down or unreachable.`;
             browserState.messageAreaEl.style.display = 'block';
         }
     };
@@ -2467,7 +2820,11 @@ function setupWBrowseApp(windowEl, windowData) {
                 navigateToUrlInWBrowse(windowData, currentHistoryUrl, true, true); 
             } else if (browserState.iframeEl.src && browserState.iframeEl.src !== 'about:blank') {
                  try { browserState.iframeEl.contentWindow?.location.reload(); } 
-                 catch (e) { browserState.iframeEl.src = browserState.iframeEl.src; } // Fallback reload
+                 catch (e) { browserState.iframeEl.src = browserState.iframeEl.src; } // Fallback for cross-origin
+            } else if (browserState.iframeEl.srcdoc && currentHistoryUrl !== 'internal:home') {
+                // If srcdoc was used and it's not the home page, re-set src.
+                // This case is less common with the current logic but good for robustness.
+                navigateToUrlInWBrowse(windowData, currentHistoryUrl, true, false);
             }
         }
     };
@@ -2481,7 +2838,6 @@ function setupWBrowseApp(windowEl, windowData) {
 }
 
 
-// App Listeners for W-Browse integration
 function setupInteractiveExternalLinks(windowEl) {
     windowEl.querySelectorAll('a.interactive-external-link').forEach(link => {
         link.addEventListener('click', (e) => {
@@ -2518,5 +2874,4 @@ function setupContactAppListeners(windowEl) {
 }
 
 
-// Start Wiqnnc_
 init();
