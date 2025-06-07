@@ -8,7 +8,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { marked } from 'marked';
 
-const API_KEY = process.env.API_KEY;
+const API_KEY = (typeof process !== 'undefined' && typeof process.env !== 'undefined') ? process.env.API_KEY : undefined;
 const OS_NAME = "Wiqnnc_";
 const OS_VERSION = "0.6 \"Phoenix\""; 
 
