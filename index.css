@@ -42,6 +42,14 @@
   --input-border-light: #BDBDBD;
   --app-library-bg-light: rgba(245, 245, 245, 0.9);
   --app-library-item-bg-light: rgba(255, 255, 255, 0.7);
+  --login-bg-light: var(--bg-light);
+  --login-box-bg-light: rgba(255, 255, 255, 0.95);
+  --login-button-bg-light: var(--current-accent);
+  --login-button-text-light: #FFFFFF;
+  --desktop-icon-label-bg-light: rgba(255, 255, 255, 0.7);
+  --desktop-icon-label-text-light: var(--text-primary-light);
+  --sticky-note-bg-light: #FFFACD; /* LightYellow */
+  --sticky-note-text-light: #333333;
 
 
   /* Dark Theme */
@@ -70,6 +78,14 @@
   --input-border-dark: #505050;
   --app-library-bg-dark: rgba(30, 30, 30, 0.9);
   --app-library-item-bg-dark: rgba(60, 60, 60, 0.7);
+  --login-bg-dark: var(--bg-dark);
+  --login-box-bg-dark: rgba(30, 30, 30, 0.95);
+  --login-button-bg-dark: var(--current-accent);
+  --login-button-text-dark: #FFFFFF;
+  --desktop-icon-label-bg-dark: rgba(0, 0, 0, 0.6);
+  --desktop-icon-label-text-dark: var(--text-primary-dark);
+  --sticky-note-bg-dark: #4A4A3A; /* Darker Yellowish */
+  --sticky-note-text-dark: #E8E8E8;
 
 
   /* Default to Light Theme */
@@ -98,6 +114,14 @@
   --current-input-border: var(--input-border-light);
   --current-app-library-bg: var(--app-library-bg-light);
   --current-app-library-item-bg: var(--app-library-item-bg-light);
+  --current-login-bg: var(--login-bg-light);
+  --current-login-box-bg: var(--login-box-bg-light);
+  --current-login-button-bg: var(--login-button-bg-light);
+  --current-login-button-text: var(--login-button-text-light);
+  --current-desktop-icon-label-bg: var(--desktop-icon-label-bg-light);
+  --current-desktop-icon-label-text: var(--desktop-icon-label-text-light);
+  --current-sticky-note-bg: var(--sticky-note-bg-light);
+  --current-sticky-note-text: var(--sticky-note-text-light);
 
 
   --wallpaper: url('https://source.unsplash.com/random/1920x1080/?space,stars,nasa,abstract'); 
@@ -130,6 +154,14 @@ body.dark-theme {
   --current-input-border: var(--input-border-dark);
   --current-app-library-bg: var(--app-library-bg-dark);
   --current-app-library-item-bg: var(--app-library-item-bg-dark);
+  --current-login-bg: var(--login-bg-dark);
+  --current-login-box-bg: var(--login-box-bg-dark);
+  --current-login-button-bg: var(--login-button-bg-dark);
+  --current-login-button-text: var(--login-button-text-dark);
+  --current-desktop-icon-label-bg: var(--desktop-icon-label-bg-dark);
+  --current-desktop-icon-label-text: var(--desktop-icon-label-text-dark);
+  --current-sticky-note-bg: var(--sticky-note-bg-dark);
+  --current-sticky-note-text: var(--sticky-note-text-dark);
 }
 
 .visually-hidden {
@@ -161,7 +193,82 @@ body.grabbing, body.grabbing * {
   cursor: grabbing !important;
 }
 
-/* Boot screen CSS removed */
+/* Login Screen */
+#login-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--current-login-bg);
+  background-image: var(--wallpaper);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 20000;
+  opacity: 1;
+  transition: opacity 0.5s ease-out;
+}
+#login-screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+#login-box {
+  background-color: var(--current-login-box-bg);
+  backdrop-filter: blur(15px) saturate(180%);
+  -webkit-backdrop-filter: blur(15px) saturate(180%);
+  padding: 40px;
+  border-radius: var(--border-radius-large);
+  text-align: center;
+  box-shadow: 0 10px 30px var(--current-shadow-color);
+  color: var(--current-text-primary);
+}
+#login-avatar {
+  font-size: 4rem;
+  margin-bottom: 15px;
+  width: 80px;
+  height: 80px;
+  line-height: 80px;
+  border-radius: 50%;
+  background-color: var(--current-button-bg);
+  color: var(--current-text-secondary);
+  margin: 0 auto 20px auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#login-box h2 {
+  margin-top: 0;
+  margin-bottom: 5px;
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+#login-box p#login-os-name {
+  margin-bottom: 25px;
+  font-size: 0.9rem;
+  color: var(--current-text-secondary);
+}
+#login-button {
+  background-color: var(--current-login-button-bg);
+  color: var(--current-login-button-text);
+  border: none;
+  padding: 10px 25px;
+  font-size: 1rem;
+  font-weight: 500;
+  border-radius: var(--border-radius-medium);
+  cursor: pointer;
+  transition: filter 0.2s;
+}
+#login-button:hover {
+  filter: brightness(1.1);
+}
+#login-button:active {
+  filter: brightness(0.9);
+  transform: scale(0.98);
+}
+
 
 #desktop {
   width: 100vw;
@@ -172,8 +279,75 @@ body.grabbing, body.grabbing * {
   position: relative;
   display: flex;
   flex-direction: column;
-  transition: background-image 0.5s ease-in-out;
+  transition: background-image 0.5s ease-in-out, opacity 0.5s ease-in;
+  opacity: 1; /* Will be set to 0 by JS if login screen is active */
 }
+#desktop.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#desktop-icons-container {
+  position: absolute;
+  top: 40px; /* Below menu bar */
+  left: 10px;
+  right: 10px;
+  bottom: 80px; /* Above dock */
+  pointer-events: none; /* Container itself doesn't capture clicks */
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 15px;
+}
+
+.desktop-icon {
+  width: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  cursor: grab;
+  padding: 5px;
+  border-radius: var(--border-radius-small);
+  pointer-events: all; /* Icons capture clicks */
+  position: absolute; /* For dragging */
+  transition: background-color 0.1s ease;
+}
+.desktop-icon:hover {
+  background-color: color-mix(in srgb, var(--current-selection-bg) 20%, transparent);
+}
+.desktop-icon.dragging {
+  background-color: color-mix(in srgb, var(--current-selection-bg) 30%, transparent);
+  opacity: 0.8;
+  cursor: grabbing;
+  z-index: 500; /* Ensure it's above other icons while dragging */
+}
+.desktop-icon-image {
+  font-size: 3rem; /* Emoji size */
+  margin-bottom: 5px;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.desktop-icon-label {
+  font-size: 0.75rem;
+  color: var(--current-desktop-icon-label-text);
+  background-color: var(--current-desktop-icon-label-bg);
+  padding: 2px 5px;
+  border-radius: var(--border-radius-small);
+  word-break: break-word;
+  max-width: 100%;
+}
+.desktop-icon:focus-visible {
+  outline: 2px solid var(--current-selection-bg);
+  outline-offset: 0px;
+  background-color: color-mix(in srgb, var(--current-selection-bg) 25%, transparent);
+}
+
 
 /* Menu Bar */
 #menu-bar {
@@ -817,19 +991,19 @@ body.dark-theme .assistant-response-display pre { background-color: rgba(255,255
 /* Custom Scrollbars */
 .window-body::-webkit-scrollbar, #spotlight-results::-webkit-scrollbar, #terminal-output::-webkit-scrollbar, 
 #app-library-grid::-webkit-scrollbar, .credits-scroll-container::-webkit-scrollbar, #wins-assistant-output::-webkit-scrollbar,
-.w-browse-iframe::-webkit-scrollbar { width: 8px; }
+.w-browse-iframe::-webkit-scrollbar, .sticky-note-textarea::-webkit-scrollbar { width: 8px; }
 
 .window-body::-webkit-scrollbar-track, #spotlight-results::-webkit-scrollbar-track, #terminal-output::-webkit-scrollbar-track, 
 #app-library-grid::-webkit-scrollbar-track, .credits-scroll-container::-webkit-scrollbar-track, #wins-assistant-output::-webkit-scrollbar-track,
-.w-browse-iframe::-webkit-scrollbar-track { background: transparent; }
+.w-browse-iframe::-webkit-scrollbar-track, .sticky-note-textarea::-webkit-scrollbar-track { background: transparent; }
 
 .window-body::-webkit-scrollbar-thumb, #spotlight-results::-webkit-scrollbar-thumb, #terminal-output::-webkit-scrollbar-thumb, 
 #app-library-grid::-webkit-scrollbar-thumb, .credits-scroll-container::-webkit-scrollbar-thumb, #wins-assistant-output::-webkit-scrollbar-thumb,
-.w-browse-iframe::-webkit-scrollbar-thumb { background-color: var(--current-text-secondary); border-radius: 4px; }
+.w-browse-iframe::-webkit-scrollbar-thumb, .sticky-note-textarea::-webkit-scrollbar-thumb { background-color: var(--current-text-secondary); border-radius: 4px; }
 
 .window-body::-webkit-scrollbar-thumb:hover, #spotlight-results::-webkit-scrollbar-thumb:hover, #terminal-output::-webkit-scrollbar-thumb:hover, 
 #app-library-grid::-webkit-scrollbar-thumb:hover, .credits-scroll-container::-webkit-scrollbar-thumb:hover, #wins-assistant-output::-webkit-scrollbar-thumb:hover,
-.w-browse-iframe::-webkit-scrollbar-thumb:hover { background-color: var(--current-text-primary); }
+.w-browse-iframe::-webkit-scrollbar-thumb:hover, .sticky-note-textarea::-webkit-scrollbar-thumb:hover { background-color: var(--current-text-primary); }
 
 
 /* Konami Code Effect */
@@ -1208,6 +1382,28 @@ body:not(.dark-theme) .neofetch-line > span:last-child { color: #111; }
     background-color: var(--current-window-bg); /* Background for when iframe is blank */
 }
 
+/* Sticky Notes App */
+.app-window[data-base-app-id^="StickyNotes"] .window-body {
+    padding: 0 !important;
+    background-color: var(--current-sticky-note-bg);
+}
+.sticky-note-textarea {
+    width: 100%;
+    height: 100%;
+    border: none;
+    padding: 10px;
+    box-sizing: border-box;
+    font-family: 'Comic Sans MS', 'Chalkboard SE', 'Marker Felt', sans-serif; /* A more playful font */
+    font-size: 1rem;
+    line-height: 1.5;
+    background-color: transparent; /* Inherits from window-body */
+    color: var(--current-sticky-note-text);
+    resize: none;
+}
+.sticky-note-textarea:focus {
+    outline: none;
+}
+
 
 /* Accessibility Focus Ring - Basic */
 *:focus-visible {
@@ -1221,19 +1417,26 @@ body:not(.dark-theme) .neofetch-line > span:last-child { color: #111; }
 .wallpaper-option:focus-visible, #theme-toggle-button:focus-visible, #check-updates-button:focus-visible,
 .notepad-controls button:focus-visible, .calculator-buttons button:focus-visible,
 .music-controls button:focus-visible, .app-library-item:focus-visible, #close-app-library-button:focus-visible,
-.w-browse-controls button:focus-visible {
+.w-browse-controls button:focus-visible, #login-button:focus-visible {
   outline: 2px solid var(--current-selection-bg) !important;
   outline-offset: 1px !important;
   box-shadow: none !important; 
 }
 #spotlight-input:focus-visible, #terminal-input:focus-visible, #notepad-textarea:focus-visible, #wins-assistant-input:focus-visible,
-.w-browse-url-input:focus-visible {
+.w-browse-url-input:focus-visible, .sticky-note-textarea:focus-visible {
   outline: none !important; 
   box-shadow: 0 0 0 2px var(--current-selection-bg) !important;
 }
 
 
 @media (max-width: 768px) {
+  #login-box { padding: 30px; width: 80%; }
+  #login-avatar { font-size: 3rem; width: 60px; height: 60px; line-height: 60px; }
+  #login-box h2 { font-size: 1.3rem; }
+  #login-button { padding: 8px 20px; font-size: 0.9rem; }
+
+  #desktop-icons-container { display: none; } /* Hide desktop icons on small screens for now */
+
   #dock {
     padding: 5px; height: 50px; overflow-x: auto; justify-content: flex-start;
   }

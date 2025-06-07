@@ -14,11 +14,22 @@
       }
     }
   </script>
+<link rel="stylesheet" href="/index.css">
 </head>
 <body>
-  <!-- Boot screen removed -->
+  <div id="login-screen" role="dialog" aria-labelledby="login-title" aria-modal="true">
+    <div id="login-box">
+      <div id="login-avatar">👤</div>
+      <h2 id="login-title">Kirati Rattanaporn</h2>
+      <p id="login-os-name">Wiqnnc_ OS</p>
+      <button id="login-button">Log In</button>
+    </div>
+  </div>
 
-  <div id="desktop">
+  <div id="desktop" style="display:none;">
+    <div id="desktop-icons-container">
+      <!-- Desktop icons will be dynamically added here -->
+    </div>
     <div id="menu-bar">
       <div class="menu-left">
         <div class="menu-item" id="apple-menu-button" role="button" aria-haspopup="true" aria-expanded="false" aria-label="Wiqnnc_ menu">
@@ -42,6 +53,7 @@
             <div class="menu-item" data-action="new-note" style="display:none;" role="menuitem">New Note</div>
             <div class="menu-item" data-action="save-note" style="display:none;" role="menuitem">Save Note</div>
             <div class="menu-item" data-action="open-note" style="display:none;" role="menuitem">Open Note...</div>
+            <div class="menu-item" data-action="new-sticky-note" style="display:none;" role="menuitem">New Sticky Note</div>
             <div class="menu-item" data-action="close-active-window-file" style="display:none;" role="menuitem">Close Window</div>
           </div>
         </div>
@@ -124,6 +136,13 @@
         <!-- Content will be injected here -->
       </div>
       <div class="resize-handle" aria-hidden="true"></div>
+    </div>
+  </template>
+
+  <template id="desktop-icon-template">
+    <div class="desktop-icon" tabindex="0" role="button">
+      <div class="desktop-icon-image"></div>
+      <span class="desktop-icon-label"></span>
     </div>
   </template>
 
@@ -250,8 +269,8 @@
     </div>
      <div class="setting-item">
       <label>System Information:</label>
-      <p id="os-version-info" data-version-popup="Crafted with passion by Win! ✨" role="button" tabindex="0" aria-label="Wiqnnc_ Version, click for a message">Wiqnnc_ Version: 0.5 "Photon"</p>
-      <button id="check-updates-button" class="mock-link" data-message="Checking for updates... Wiqnnc_ 0.5 'Photon' is up to date!">Check for Updates...</button>
+      <p id="os-version-info" data-version-popup="Crafted with passion by Win! ✨" role="button" tabindex="0" aria-label="Wiqnnc_ Version, click for a message">Wiqnnc_ Version</p>
+      <button id="check-updates-button" class="mock-link" data-message="Checking for updates... Wiqnnc_ is up to date!">Check for Updates...</button>
     </div>
   </template>
   
@@ -267,17 +286,19 @@
       <li><strong>Win's Assistant (🎤):</strong> Talk to me (Win!) directly through my AI persona! Try asking "what is the meaning of life?".</li>
       <li><strong>Terminal Commands:</strong> Try `help`, `neofetch`, `kirati`, `theme dark`, `wallpaper random`, `adventure`, `glitch_os`, `show_credits`, `ascii cat`.</li>
       <li><strong>W-Browse (🌐):</strong> Explore the web! Note: some sites may not load due to embedding restrictions.</li>
+      <li><strong>Desktop Icons (📁, 💾):</strong> Drag them around! Double-click to open associated apps/info.</li>
+      <li><strong>Sticky Notes (📌):</strong> Jot down quick notes. They save automatically!</li>
       <li><strong>Easter Eggs:</strong> Try the Konami code on the desktop (↑↑↓↓←→←→BA) or triple-click the Date/Time in the menu bar! Click the OS version in "About This Wiqnnc_".</li>
     </ul>
   </template>
   
   <template id="about-this-wiqnnc-content">
     <h2>About This Wiqnnc_</h2>
-    <p id="about-os-version" data-version-popup="Wiqnnc_ - A Digital Dream by Win! 🚀" role="button" tabindex="0" aria-label="Wiqnnc_ Version, click for a message"><strong>Wiqnnc_ Version:</strong> 0.5 "Photon"</p>
+    <p id="about-os-version" data-version-popup="Wiqnnc_ - A Digital Dream by Win! 🚀" role="button" tabindex="0" aria-label="Wiqnnc_ Version, click for a message"><strong>Wiqnnc_ Version:</strong> </p>
     <p><strong>Developer:</strong> Kirati Rattanaporn (Win)</p>
     <p><strong>Core Technology:</strong> Gemini API Enhanced Brain</p>
     <p><strong>Design Philosophy:</strong> "No risk. No story." - Applied to digital experiences.</p>
-    <p><strong>Built with:</strong> TypeScript, HTML, CSS, and a lot of 🚀✨</p>
+    <p><strong>Built with:</strong> JavaScript, HTML, CSS, and a lot of 🚀✨</p>
     <p>&copy; 2024 Kirati Rattanaporn. This portfolio is a masterpiece in progress.</p>
   </template>
 
@@ -381,7 +402,7 @@
         <p><strong>Lead Developer & Visionary:</strong> Kirati "Win" Rattanaporn</p>
         <p><strong>AI Core & Conversation Engine:</strong> Google Gemini API</p>
         <p><strong>Inspiration & Design Language:</strong> Apple, F1, SpaceX, NASA, The Future</p>
-        <p><strong>Primary Technologies:</strong> TypeScript, HTML5, CSS3</p>
+        <p><strong>Primary Technologies:</strong> JavaScript, HTML5, CSS3</p>
         <p><strong>Special Thanks To:</strong> The Open Web, Stack Overflow, Unsplash (for random wallpapers)</p>
         <p><strong>Motto:</strong> "No risk. No story."</p>
         <p>---</p>
@@ -408,9 +429,14 @@
     <iframe class="w-browse-iframe" sandbox="allow-forms allow-modals allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-top-navigation-by-user-activation" allow="encrypted-media; geolocation; microphone; camera; midi; vr; fullscreen"></iframe>
   </template>
 
+  <template id="sticky-notes-content">
+    <textarea class="sticky-note-textarea" placeholder="Type your note here..." aria-label="Sticky note text area"></textarea>
+  </template>
+
 
   <div id="context-menu" role="menu">
     <div class="context-menu-item" data-action="new-finder-window-ctx" role="menuitem">New Wiqnnc_ Window</div>
+    <div class="context-menu-item" data-action="new-sticky-note-ctx" role="menuitem">New Sticky Note</div>
     <div class="context-menu-item" data-action="change-wallpaper" role="menuitem">Change Desktop Background...</div>
     <div class="context-menu-item" data-action="toggle-app-library" role="menuitem">Show App Library</div>
     <div class="context-menu-item disabled-menu-item" data-action="new-folder-disabled" role="menuitem">New Folder</div>
@@ -437,6 +463,7 @@
   <div id="version-tooltip" class="tooltip" style="display:none; position:fixed; z-index: 1000000;"></div>
 
 
-  <script type="module" src="index.tsx"></script>
+  <script type="module" src="index.js"></script>
+<script type="module" src="/index.tsx"></script>
 </body>
 </html>
