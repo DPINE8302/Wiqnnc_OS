@@ -130,8 +130,7 @@ const currentClock = document.getElementById('current-time')!;
 const currentDateEl = document.getElementById('current-date')!;
 const dateTimeEl = document.getElementById('date-time') as HTMLElement;
 const contextMenu = document.getElementById('context-menu') as HTMLElement;
-const bootScreen = document.getElementById('boot-screen') as HTMLElement;
-const bootScreenMessage = bootScreen.querySelector('p') as HTMLElement;
+// Boot screen elements removed
 const spotlightIcon = document.getElementById('spotlight-icon') as HTMLElement;
 const spotlightSearchUI = document.getElementById('spotlight-search-ui') as HTMLElement;
 const spotlightInput = document.getElementById('spotlight-input') as HTMLInputElement;
@@ -175,15 +174,8 @@ const APP_DEFINITIONS: AppDefinition[] = [
 // --- Initialization ---
 function init() {
   document.title = `${OS_NAME} - Kirati Rattanaporn`;
-  bootScreenMessage.textContent = `Starting ${OS_NAME}...`;
-  (bootScreen.querySelector('.boot-logo') as HTMLElement).textContent = OS_NAME.charAt(0).toUpperCase();
-
+  // Boot screen logic removed
   document.documentElement.style.setProperty('--current-accent', state.accentColors[state.currentAccentIndex]);
-
-  window.setTimeout(() => {
-    bootScreen.classList.add('hidden');
-    window.setTimeout(() => bootScreen.style.display = 'none', 500);
-  }, 1500);
 
   updateDateTime();
   window.setInterval(updateDateTime, 1000 * 30); 
@@ -214,8 +206,8 @@ function init() {
   } else {
     initializeGeminiChat(); // For Win's Assistant
   }
-  // Open "About" app (Finder) on startup after a slight delay
-  window.setTimeout(() => openApp('About'), 2000);
+  // Open "About" app (Finder) on startup 
+  openApp('About');
 }
 
 // --- Theme Management ---
@@ -1438,36 +1430,7 @@ function closeAllMenus() {
         btn.setAttribute('aria-expanded', 'false');
     });
 }
-function triggerBootSequence(message: string, duration = 1500, then?: () => void) {
-    desktop.style.opacity = '0';
-    dock.style.opacity = '0';
-    windowsContainer.style.opacity = '0';
-    menuBar.style.opacity = '0';
-
-    window.setTimeout(() => { 
-        bootScreenMessage.textContent = message;
-        bootScreen.classList.remove('hidden');
-        bootScreen.classList.add('visible'); 
-        bootScreen.style.display = 'flex'; 
-
-        window.setTimeout(() => { 
-            bootScreen.classList.remove('visible');
-            bootScreen.classList.add('hidden'); 
-            window.setTimeout(() => { 
-                bootScreen.style.display = 'none'; 
-                if (then) {
-                    then(); 
-                } else { 
-                    desktop.style.opacity = '1';
-                    dock.style.opacity = '1'; 
-                    windowsContainer.style.opacity = '1';
-                    menuBar.style.opacity = '1';
-                }
-            }, 500); 
-        }, duration);
-    }, 300); 
-}
-
+// triggerBootSequence function removed
 
 function handleMenuAction(action: string) {
     const activeWindow = state.activeWindowId ? state.windows.get(state.activeWindowId) : null;
@@ -1476,16 +1439,17 @@ function handleMenuAction(action: string) {
         case 'open-settings': case 'open-preferences': openApp('Settings'); break;
         case 'sleep': alert(`${OS_NAME} is taking a quick nap... (This is a visual simulation)`); break;
         case 'restart':
-            triggerBootSequence(`Restarting ${OS_NAME}...`, 2000, () => {
-                window.location.reload(); 
-            });
+            window.location.reload();
             break;
         case 'shutdown':
-            triggerBootSequence(`Shutting down ${OS_NAME}...`, 2000, () => {
-                 bootScreenMessage.textContent = `It's now safe to turn off your ${OS_NAME}. Goodbye!`;
-                 bootScreen.classList.remove('hidden'); bootScreen.classList.add('visible'); bootScreen.style.display = 'flex';
-                 desktop.style.opacity = '0'; dock.style.opacity = '0'; windowsContainer.style.opacity = '0'; menuBar.style.opacity = '0'; 
-            });
+            desktop.style.opacity = '0';
+            dock.style.opacity = '0';
+            windowsContainer.style.opacity = '0';
+            menuBar.style.opacity = '0';
+            window.setTimeout(() => { // Allow UI to fade
+                alert("Wiqnnc_ is shutting down. It's now safe to close this browser tab.");
+            }, 500);
+            // Further interactions are blocked by alert.
             break;
         case 'new-finder-window': openApp('About'); break; 
         case 'new-note': 
@@ -1997,16 +1961,18 @@ function setupTerminalApp(windowEl: HTMLElement, windowData: AppWindow) {
                             break;
             case 'sudo': addOutput('Password: *User is not in the sudoers file. This incident will be reported.*', 'error'); break;
             case 'reboot': 
-                addOutput('Rebooting Wiqnnc_...', 'success'); 
-                triggerBootSequence(`Restarting ${OS_NAME}...`, 2000, () => window.location.reload());
+                addOutput('Rebooting Wiqnnc_...', 'success');
+                window.setTimeout(() => window.location.reload(), 500);
                 break;
             case 'shutdown': 
                 addOutput('Shutting down Wiqnnc_...', 'success');
-                triggerBootSequence(`Shutting down ${OS_NAME}...`, 2000, () => {
-                    bootScreenMessage.textContent = `It's now safe to turn off your ${OS_NAME}. Goodbye!`;
-                    bootScreen.classList.remove('hidden'); bootScreen.classList.add('visible'); bootScreen.style.display = 'flex';
-                    desktop.style.opacity = '0'; dock.style.opacity = '0'; windowsContainer.style.opacity = '0'; menuBar.style.opacity = '0'; 
-                });
+                window.setTimeout(() => {
+                    desktop.style.opacity = '0';
+                    dock.style.opacity = '0';
+                    windowsContainer.style.opacity = '0';
+                    menuBar.style.opacity = '0';
+                    alert("Wiqnnc_ is shutting down. It's now safe to close this browser tab.");
+                }, 500);
                 break;
             case 'ascii':
                 const artKey = args[0]?.toLowerCase();
